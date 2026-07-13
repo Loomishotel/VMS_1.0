@@ -389,6 +389,7 @@ export default function App() {
 
   // Admin Flagged Queue
   const [flaggedVisitors, setFlaggedVisitors] = useState<any[]>([]);
+  const [confirmedBlacklisted, setConfirmedBlacklisted] = useState<any[]>([]);
   const [preRegDeptFilter, setPreRegDeptFilter] = useState('');
 
   // Authentication Fields
@@ -1121,7 +1122,7 @@ export default function App() {
           flagReason,
           flaggedByUserId
         `)
-        .eq('blacklistFlag', 'pending_review');
+        .or('blacklistFlag.eq.pending_review,isBlacklisted.eq.true');
 
       if (error) throw error;
 
@@ -1153,7 +1154,8 @@ export default function App() {
             visitHistory: visitsData || []
           };
         }));
-        setFlaggedVisitors(parsed);
+        setFlaggedVisitors(parsed.filter((v: any) => v.blacklistFlag === 'pending_review'));
+        setConfirmedBlacklisted(parsed.filter((v: any) => v.isBlacklisted === true));
       }
     } catch (err: any) {
       console.error('Error loading blacklist review queue:', err.message);
@@ -1223,6 +1225,31 @@ export default function App() {
       fetchBlacklistReview();
     } catch (err: any) {
       setAlertMessage({ type: 'error', text: err.message || 'Dismissal failed' });
+    }
+  };
+  const handleRemoveFromBlacklist = async (visitorId: string) => {
+    try {
+      const { error } = await supabase
+        .from('Visitor')
+        .update({
+          isBlacklisted: false,
+          blacklistFlag: 'none'
+        })
+        .eq('id', visitorId);
+
+      if (error) throw error;
+
+      await supabase.from('AuditLog').insert({
+        actorUserId: user.id,
+        action: 'REMOVE_FROM_BLACKLIST',
+        entityType: 'Visitor',
+        entityId: visitorId
+      });
+
+      setAlertMessage({ type: 'success', text: 'Visitor removed from blacklist successfully.' });
+      fetchBlacklistReview();
+    } catch (err: any) {
+      setAlertMessage({ type: 'error', text: err.message || 'Failed to remove visitor from blacklist' });
     }
   };
 
@@ -1398,7 +1425,9 @@ export default function App() {
             phone,
             company,
             visitorType,
-            photoUrl
+            photoUrl,
+            isBlacklisted,
+            blacklistFlag
           ),
           Employee (
             id,
@@ -1436,7 +1465,9 @@ export default function App() {
             deniedReason: v.deniedReason || '',
             zoneAccess: v.zoneAccess || '',
             photoUrl: v.Visitor?.photoUrl || '',
-            additionalGuests: v.additionalGuests || 0
+            additionalGuests: v.additionalGuests || 0,
+            isBlacklisted: v.Visitor?.isBlacklisted || false,
+            blacklistFlag: v.Visitor?.blacklistFlag || ''
           }))
           .filter((v: any) => {
             const time = new Date(v.scheduledAt || v.createdAt).getTime();
@@ -1897,24 +1928,74 @@ export default function App() {
     }
 
     try {
-      // 1. Check or Create Visitor
-      let visitorId = '';
-      if (preEmail) {
-        const { data: existing } = await supabase
+      // 1. Check Blacklist Status first
+      let blacklistCheck = false;
+      const emailInput = preEmail.trim().toLowerCase();
+      const phoneInput = finalPhone.trim();
+
+      if (emailInput) {
+        const { data: blEmail } = await supabase
           .from('Visitor')
-          .select('id')
-          .eq('email', preEmail)
+          .select('isBlacklisted')
+          .eq('email', emailInput)
+          .eq('isBlacklisted', true)
           .maybeSingle();
-        if (existing) visitorId = existing.id;
+        if (blEmail) blacklistCheck = true;
+      }
+      if (!blacklistCheck && phoneInput) {
+        const { data: blPhone } = await supabase
+          .from('Visitor')
+          .select('isBlacklisted')
+          .eq('phone', phoneInput)
+          .eq('isBlacklisted', true)
+          .maybeSingle();
+        if (blPhone) blacklistCheck = true;
+      }
+      if (!blacklistCheck && preName.trim()) {
+        const { data: blName } = await supabase
+          .from('Visitor')
+          .select('id, email, phone, isBlacklisted')
+          .ilike('fullName', preName.trim())
+          .eq('isBlacklisted', true);
+        if (blName && blName.length > 0) {
+          const matchesAny = blName.some(v => {
+            const emailDb = (v.email || '').trim().toLowerCase();
+            const phoneDb = (v.phone || '').trim();
+            return emailInput === emailDb && phoneInput === phoneDb;
+          });
+          if (matchesAny) blacklistCheck = true;
+        }
       }
 
-      if (!visitorId) {
-        const { data: existing } = await supabase
-          .from('Visitor')
-          .select('id')
-          .ilike('fullName', preName)
-          .maybeSingle();
-        if (existing) visitorId = existing.id;
+      if (blacklistCheck) {
+        setAlertMessage({ type: 'error', text: 'This visitor is blacklisted and cannot be registered for a visit.' });
+        return;
+      }
+
+      // 2. Check or Create Visitor
+      let visitorId = '';
+      
+      // Look up visitors with the same name
+      const { data: nameMatches } = await supabase
+        .from('Visitor')
+        .select('id, email, phone')
+        .ilike('fullName', preName.trim());
+
+      if (nameMatches && nameMatches.length > 0) {
+        // Find if there's an existing visitor record where the entered details match the stored details
+        const match = nameMatches.find(v => {
+          const emailDb = (v.email || '').trim().toLowerCase();
+          const phoneDb = (v.phone || '').trim();
+
+          const emailOk = emailInput === emailDb;
+          const phoneOk = phoneInput === phoneDb;
+
+          return emailOk && phoneOk;
+        });
+
+        if (match) {
+          visitorId = match.id;
+        }
       }
 
       if (!visitorId) {
@@ -2716,37 +2797,43 @@ export default function App() {
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
-                                {item.status === 'Expected' && (
+                                {item.isBlacklisted ? (
+                                  <Badge tone="danger">⚠️ BLACKLISTED</Badge>
+                                ) : (
                                   <>
-                                    <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleSecurityMarkArrived(item.id)}>
-                                      Mark Arrived
-                                    </Button>
-                                    <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
-                                      Deny Entry
+                                    {item.status === 'Expected' && (
+                                      <>
+                                        <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleSecurityMarkArrived(item.id)}>
+                                          Mark Arrived
+                                        </Button>
+                                        <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
+                                          Deny Entry
+                                        </Button>
+                                      </>
+                                    )}
+                                    {item.status === 'Waiting' && (
+                                      <>
+                                        <Button variant="primary" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => triggerCheckIn(item.id)} leftIcon={<CheckCircle size={12} />}>
+                                          Check In
+                                        </Button>
+                                        <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
+                                          Deny Entry
+                                        </Button>
+                                      </>
+                                    )}
+                                    {item.status === 'CheckedIn' && (
+                                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <Badge tone="success">✓ Checked In</Badge>
+                                        <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleCheckOut(item.id)}>
+                                          Check Out
+                                        </Button>
+                                      </div>
+                                    )}
+                                    <Button variant="secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', borderColor: '#ef4444', color: 'var(--color-danger)' }} onClick={() => setShowFlagBlacklistModal(item.visitorId)}>
+                                      Flag
                                     </Button>
                                   </>
                                 )}
-                                {item.status === 'Waiting' && (
-                                  <>
-                                    <Button variant="primary" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => triggerCheckIn(item.id)} leftIcon={<CheckCircle size={12} />}>
-                                      Check In
-                                    </Button>
-                                    <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
-                                      Deny Entry
-                                    </Button>
-                                  </>
-                                )}
-                                {item.status === 'CheckedIn' && (
-                                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <Badge tone="success">✓ Checked In</Badge>
-                                    <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleCheckOut(item.id)}>
-                                      Check Out
-                                    </Button>
-                                  </div>
-                                )}
-                                <Button variant="secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', borderColor: '#ef4444', color: 'var(--color-danger)' }} onClick={() => setShowFlagBlacklistModal(item.visitorId)}>
-                                  Flag
-                                </Button>
                               </div>
                             </td>
                           </tr>
@@ -3960,6 +4047,62 @@ export default function App() {
                   ))}
                 </div>
               )}
+
+              {/* Confirmed Blacklist Section */}
+              <div style={{ marginTop: '48px', marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <ShieldAlert size={22} style={{ color: 'var(--color-danger)' }} />
+                  Confirmed Blacklisted Visitors
+                </h2>
+                <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                  {confirmedBlacklisted.length > 0
+                    ? `${confirmedBlacklisted.length} visitor${confirmedBlacklisted.length > 1 ? 's' : ''} currently banned from entering the premises`
+                    : 'No confirmed blacklisted visitors'}
+                </p>
+              </div>
+
+              {confirmedBlacklisted.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 24px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--card-border)', borderRadius: '16px' }}>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>No visitors currently confirmed on the blacklist.</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {confirmedBlacklisted.map((v: any) => (
+                    <div key={v.id} style={{
+                      background: 'var(--card-bg)',
+                      border: '1px solid var(--card-border)',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.15)'
+                    }}>
+                      <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, color: 'var(--color-danger)', flexShrink: 0 }}>
+                          {v.fullName?.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--color-text-primary)' }}>{v.fullName}</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                            {v.email && <span>{v.email}</span>}
+                            {v.email && v.phone && <span style={{ margin: '0 8px', color: 'var(--color-text-secondary)' }}>|</span>}
+                            {v.phone && <span>{v.phone}</span>}
+                            {v.company && <span style={{ marginLeft: '8px', color: 'var(--color-text-secondary)' }}>· {v.company}</span>}
+                          </div>
+                        </div>
+                        {user.role === 'Admin' && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{ padding: '6px 14px', fontSize: '0.8rem', borderColor: 'var(--color-text-secondary)', color: 'var(--color-text-primary)' }}
+                            onClick={() => handleRemoveFromBlacklist(v.id)}
+                          >
+                            Remove from Blacklist
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -4070,29 +4213,35 @@ export default function App() {
                               </span>
                             </td>
                             <td style={{ textAlign: 'right' }}>
-                              {item.status === 'Waiting' && user.role === 'Receptionist' && (
-                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                  <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => triggerCheckIn(item.id)}>
-                                    Approve Entry
-                                  </button>
-                                  <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
-                                    Deny
-                                  </button>
-                                </div>
-                              )}
-                              {(item.status === 'CheckedIn' || item.status === 'InMeeting') && user.role === 'Receptionist' && (
-                                <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleCheckOut(item.id)}>
-                                  Check Out
-                                </button>
-                              )}
-                              {item.status === 'Denied' && (
-                                <span style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>Denied: {item.deniedReason}</span>
-                              )}
-                              {item.status === 'Expected' && (
-                                <span style={{ fontSize: '0.8rem', color: 'var(--color-indigo-accent)' }}>Pre-Registered</span>
-                              )}
-                              {item.status === 'CheckedOut' && (
-                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Departed</span>
+                              {item.isBlacklisted ? (
+                                <span className="badge badge-danger" style={{ background: '#ef4444', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>⚠️ BLACKLISTED</span>
+                              ) : (
+                                <>
+                                  {item.status === 'Waiting' && user.role === 'Receptionist' && (
+                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                      <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => triggerCheckIn(item.id)}>
+                                        Approve Entry
+                                      </button>
+                                      <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
+                                        Deny
+                                      </button>
+                                    </div>
+                                  )}
+                                  {(item.status === 'CheckedIn' || item.status === 'InMeeting') && user.role === 'Receptionist' && (
+                                    <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleCheckOut(item.id)}>
+                                      Check Out
+                                    </button>
+                                  )}
+                                  {item.status === 'Denied' && (
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>Denied: {item.deniedReason}</span>
+                                  )}
+                                  {item.status === 'Expected' && (
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--color-indigo-accent)' }}>Pre-Registered</span>
+                                  )}
+                                  {item.status === 'CheckedOut' && (
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Departed</span>
+                                  )}
+                                </>
                               )}
                             </td>
                           </tr>
