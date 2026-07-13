@@ -422,6 +422,9 @@ export default function App() {
   const [denyReason, setDeniedReason] = useState('');
   const [showPassModal, setShowPassModal] = useState<any | null>(null); // holds printed pass data
   const [showCheckInPhotoModal, setShowCheckInPhotoModal] = useState<string | null>(null); // holds visitId
+  const [completeEmail, setCompleteEmail] = useState('');
+  const [completePhone, setCompletePhone] = useState('');
+  const [completePhoneCountryCode, setCompletePhoneCountryCode] = useState('+1');
 
   // Camera states
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -478,6 +481,26 @@ export default function App() {
 
   const triggerCheckIn = (visitId: string) => {
     if (user?.role === 'Security' || user?.role === 'Receptionist') {
+      const v = queue.find(item => item.id === visitId);
+      if (v) {
+        setCompleteEmail(v.visitorEmail || '');
+        const phoneVal = v.visitorPhone || '';
+        if (phoneVal.startsWith('+')) {
+          const parts = phoneVal.split(' ');
+          if (parts.length > 1) {
+            setCompletePhoneCountryCode(parts[0]);
+            setCompletePhone(parts.slice(1).join(' '));
+          } else {
+            const matchedPrefix = ['+971', '+353', '+880', '+977', '+234', '+254', '+233', '+852', '+886', '+358', '+966'].find(p => phoneVal.startsWith(p));
+            const prefix = matchedPrefix || phoneVal.substring(0, 3);
+            setCompletePhoneCountryCode(prefix);
+            setCompletePhone(phoneVal.replace(prefix, '').trim());
+          }
+        } else {
+          setCompletePhoneCountryCode('+1');
+          setCompletePhone(phoneVal);
+        }
+      }
       setShowCheckInPhotoModal(visitId);
       setCapturedPhoto(null);
       setIsCameraActive(false);
@@ -1815,6 +1838,19 @@ export default function App() {
       return;
     }
 
+    // Validate presence of email and phone according to user role
+    if (user?.role === 'Employee') {
+      if (!preEmail.trim() && !prePhone.trim()) {
+        setAlertMessage({ type: 'error', text: 'Please provide at least a visitor email address or a phone number.' });
+        return;
+      }
+    } else {
+      if (!preEmail.trim() || !prePhone.trim()) {
+        setAlertMessage({ type: 'error', text: 'Please provide both email address and phone number for walk-in visitors.' });
+        return;
+      }
+    }
+
     // Validate Email if entered
     if (preEmail.trim()) {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -1973,7 +2009,12 @@ export default function App() {
   };
 
   // Check In visitor and generate printable pass
-  const handleApproveCheckIn = async (visitId: string, photoToAttach?: string | null) => {
+  const handleApproveCheckIn = async (
+    visitId: string, 
+    photoToAttach?: string | null,
+    completedEmail?: string | null,
+    completedPhone?: string | null
+  ) => {
     try {
       // Fetch full visit details for the pass before updating
       const { data: visitData, error: fetchErr } = await supabase
@@ -1993,13 +2034,22 @@ export default function App() {
         return;
       }
 
-      if (photoToAttach && visitData?.visitorId) {
-        await supabase
-          .from('Visitor')
-          .update({ photoUrl: photoToAttach })
-          .eq('id', visitData.visitorId);
-        if (visitData.Visitor) {
-          (visitData.Visitor as any).photoUrl = photoToAttach;
+      if (visitData?.visitorId) {
+        const updatePayload: any = {};
+        if (photoToAttach) updatePayload.photoUrl = photoToAttach;
+        if (completedEmail) updatePayload.email = completedEmail;
+        if (completedPhone) updatePayload.phone = completedPhone;
+
+        if (Object.keys(updatePayload).length > 0) {
+          await supabase
+            .from('Visitor')
+            .update(updatePayload)
+            .eq('id', visitData.visitorId);
+          if (visitData.Visitor) {
+            if (photoToAttach) (visitData.Visitor as any).photoUrl = photoToAttach;
+            if (completedEmail) (visitData.Visitor as any).email = completedEmail;
+            if (completedPhone) (visitData.Visitor as any).phone = completedPhone;
+          }
         }
       }
 
@@ -3759,10 +3809,10 @@ export default function App() {
                     <span style={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Visit Details</span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px', marginBottom: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor Classification</label>
-                      <select className="form-input" value={preType} onChange={(e: any) => { const newType = e.target.value; setPreType(newType); if (newType !== 'VIP' && preGuestCount > 10) setPreGuestCount(10); }} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
+                      <select className="form-input" value={preType} onChange={(e: any) => setPreType(e.target.value)} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
                         <option value="Guest">Guest</option>
                         <option value="Vendor">Vendor</option>
                         <option value="Contractor">Contractor</option>
@@ -3773,21 +3823,6 @@ export default function App() {
                     <div>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Scheduled Date &amp; Time *</label>
                       <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Number of Guests</label>
-                      <input 
-                        type="number" 
-                        className="form-input" 
-                        min="0"
-                        max={preType === 'VIP' ? undefined : 10}
-                        value={preGuestCount} 
-                        onChange={e => {
-                          const val = Math.max(0, parseInt(e.target.value) || 0);
-                          setPreGuestCount(preType === 'VIP' ? val : Math.min(10, val));
-                        }} 
-                        style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} 
-                      />
                     </div>
                   </div>
 
@@ -4483,10 +4518,10 @@ export default function App() {
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Visit Details</span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor Classification</label>
-                  <select className="form-input" value={preType} onChange={(e: any) => { const newType = e.target.value; setPreType(newType); if (newType !== 'VIP' && preGuestCount > 10) setPreGuestCount(10); }} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
+                  <select className="form-input" value={preType} onChange={(e: any) => setPreType(e.target.value)} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
                     <option value="Guest">Guest</option>
                     <option value="Vendor">Vendor</option>
                     <option value="Contractor">Contractor</option>
@@ -4497,21 +4532,6 @@ export default function App() {
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Scheduled Date &amp; Time *</label>
                   <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Number of Guests</label>
-                  <input 
-                    type="number" 
-                    className="form-input" 
-                    min="0"
-                    max={preType === 'VIP' ? undefined : 10}
-                    value={preGuestCount} 
-                    onChange={e => {
-                      const val = Math.max(0, parseInt(e.target.value) || 0);
-                      setPreGuestCount(preType === 'VIP' ? val : Math.min(10, val));
-                    }} 
-                    style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} 
-                  />
                 </div>
               </div>
 
@@ -4552,116 +4572,238 @@ export default function App() {
       )}
 
       {/* MODAL: Check-In Photo Capture (Security only) */}
-      {showCheckInPhotoModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ 
-            maxWidth: '500px', 
-            width: '90%', 
-            background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
-            borderRadius: '12px',
-            padding: '36px',
-            textAlign: 'center'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--card-border)', paddingBottom: '16px' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                Visitor Photo Capture
-              </h3>
-              <button 
-                style={{ 
-                  background: 'none', border: 'none', 
-                  color: 'var(--color-text-secondary)', 
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center'
-                }} 
-                onClick={() => {
-                  stopCamera();
-                  setShowCheckInPhotoModal(null);
-                  setCapturedPhoto(null);
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
+      {showCheckInPhotoModal && (() => {
+        const activeVisit = queue.find(v => v.id === showCheckInPhotoModal);
+        return (
+          <div className="modal-overlay">
+            <div className="modal-content" style={{ 
+              maxWidth: '500px', 
+              width: '90%', 
+              background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
+              borderRadius: '12px',
+              padding: '36px',
+              textAlign: 'center'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--card-border)', paddingBottom: '16px' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                  Visitor Photo Capture
+                </h3>
+                <button 
+                  style={{ 
+                    background: 'none', border: 'none', 
+                    color: 'var(--color-text-secondary)', 
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }} 
+                  onClick={() => {
+                    stopCamera();
+                    setShowCheckInPhotoModal(null);
+                    setCapturedPhoto(null);
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
 
-            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
-              Please capture a photo of the visitor to proceed with check-in.
-            </p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
+                Please capture a photo of the visitor to proceed with check-in.
+              </p>
 
-            {/* Video / Captured Image Container */}
-            <div style={{ position: 'relative', width: '280px', height: '280px', borderRadius: '12px', overflow: 'hidden', border: '2px solid var(--card-border)', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-              {isCameraActive ? (
-                <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} autoPlay playsInline muted />
-              ) : capturedPhoto ? (
-                <img src={capturedPhoto} alt="Captured Visitor" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <div style={{ color: 'var(--color-text-secondary)' }}>
-                  <User size={64} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
-                  <span style={{ fontSize: '0.8rem', display: 'block' }}>Camera Off</span>
+              {/* Video / Captured Image Container */}
+              <div style={{ position: 'relative', width: '280px', height: '280px', borderRadius: '12px', overflow: 'hidden', border: '2px solid var(--card-border)', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                {isCameraActive ? (
+                  <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} autoPlay playsInline muted />
+                ) : capturedPhoto ? (
+                  <img src={capturedPhoto} alt="Captured Visitor" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ color: 'var(--color-text-secondary)' }}>
+                    <User size={64} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+                    <span style={{ fontSize: '0.8rem', display: 'block' }}>Camera Off</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Camera Control Buttons */}
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '24px' }}>
+                {!isCameraActive && !capturedPhoto && (
+                  <button type="button" className="btn btn-primary" onClick={startCamera} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Camera size={16} /> Start Camera
+                  </button>
+                )}
+                {isCameraActive && (
+                  <button type="button" className="btn btn-success" onClick={capturePhoto} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', color: '#fff' }}>
+                    <Camera size={16} /> Capture Photo
+                  </button>
+                )}
+                {(isCameraActive || capturedPhoto) && (
+                  <button type="button" className="btn btn-secondary" onClick={() => { stopCamera(); setCapturedPhoto(null); }} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <RefreshCw size={16} /> Retake / Clear
+                  </button>
+                )}
+              </div>
+
+              {/* If visitor details are missing, show inputs to complete them */}
+              {activeVisit && (!activeVisit.visitorEmail || !activeVisit.visitorPhone) && (
+                <div style={{ textAlign: 'left', marginBottom: '24px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px dashed var(--card-border)' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f59e0b', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ShieldAlert size={14} style={{ color: '#f59e0b' }} /> Complete Missing Visitor Details
+                  </div>
+                  
+                  {!activeVisit.visitorEmail && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Email Address *</label>
+                      <input 
+                        type="email" 
+                        className="form-input" 
+                        value={completeEmail} 
+                        onChange={e => setCompleteEmail(e.target.value)} 
+                        placeholder="visitor@example.com" 
+                        style={{ width: '100%', height: '38px', fontSize: '0.85rem' }} 
+                      />
+                    </div>
+                  )}
+
+                  {!activeVisit.visitorPhone && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Phone Number *</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <select 
+                          className="form-input" 
+                          value={completePhoneCountryCode} 
+                          onChange={e => setCompletePhoneCountryCode(e.target.value)} 
+                          style={{ width: '90px', background: 'var(--menu-item-bg)', padding: '6px', height: '38px', fontSize: '0.85rem' }}
+                        >
+                          <option value="+1">+1 (US)</option>
+                          <option value="+91">+91 (IN)</option>
+                          <option value="+44">+44 (UK)</option>
+                          <option value="+61">+61 (AU)</option>
+                          <option value="+65">+65 (SG)</option>
+                          <option value="+971">+971 (AE)</option>
+                          <option value="+49">+49 (DE)</option>
+                          <option value="+33">+33 (FR)</option>
+                          <option value="+81">+81 (JP)</option>
+                          <option value="+82">+82 (KR)</option>
+                          <option value="+27">+27 (ZA)</option>
+                          <option value="+55">+55 (BR)</option>
+                        </select>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          value={completePhone} 
+                          onChange={e => setCompletePhone(e.target.value)} 
+                          placeholder="(555) 0199" 
+                          style={{ flex: 1, height: '38px', fontSize: '0.85rem' }} 
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
 
-            {/* Camera Control Buttons */}
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '24px' }}>
-              {!isCameraActive && !capturedPhoto && (
-                <button type="button" className="btn btn-primary" onClick={startCamera} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Camera size={16} /> Start Camera
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid var(--card-border)', paddingTop: '20px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    stopCamera();
+                    setShowCheckInPhotoModal(null);
+                    setCapturedPhoto(null);
+                  }}
+                  style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+                >
+                  Cancel
                 </button>
-              )}
-              {isCameraActive && (
-                <button type="button" className="btn btn-success" onClick={capturePhoto} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', color: '#fff' }}>
-                  <Camera size={16} /> Capture Photo
-                </button>
-              )}
-              {(isCameraActive || capturedPhoto) && (
-                <button type="button" className="btn btn-secondary" onClick={() => { stopCamera(); setCapturedPhoto(null); }} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <RefreshCw size={16} /> Retake / Clear
-                </button>
-              )}
-            </div>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  disabled={!capturedPhoto}
+                  onClick={async () => {
+                    if (!showCheckInPhotoModal || !capturedPhoto) return;
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid var(--card-border)', paddingTop: '20px' }}>
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
-                onClick={() => {
-                  stopCamera();
-                  setShowCheckInPhotoModal(null);
-                  setCapturedPhoto(null);
-                }}
-                style={{ padding: '10px 20px', fontSize: '0.9rem' }}
-              >
-                Cancel
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-primary" 
-                disabled={!capturedPhoto}
-                onClick={async () => {
-                  if (showCheckInPhotoModal && capturedPhoto) {
+                    let emailToSave = null;
+                    let phoneToSave = null;
+
+                    if (activeVisit) {
+                      // Validate missing email
+                      if (!activeVisit.visitorEmail) {
+                        const trimmedEmail = completeEmail.trim();
+                        if (!trimmedEmail) {
+                          setAlertMessage({ type: 'error', text: 'Email is required to complete check-in.' });
+                          return;
+                        }
+                        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                        if (!emailRegex.test(trimmedEmail)) {
+                          setAlertMessage({ type: 'error', text: 'Please enter a valid email address.' });
+                          return;
+                        }
+                        emailToSave = trimmedEmail;
+                      }
+
+                      // Validate missing phone
+                      if (!activeVisit.visitorPhone) {
+                        const trimmedPhone = completePhone.trim();
+                        if (!trimmedPhone) {
+                          setAlertMessage({ type: 'error', text: 'Phone number is required to complete check-in.' });
+                          return;
+                        }
+                        
+                        let finalPhone = '';
+                        if (trimmedPhone.startsWith('+')) {
+                          finalPhone = trimmedPhone;
+                        } else {
+                          finalPhone = `${completePhoneCountryCode} ${trimmedPhone}`;
+                        }
+
+                        const phoneRegex = /^\+[1-9][0-9\s\-()]{6,19}$/;
+                        if (!phoneRegex.test(finalPhone)) {
+                          setAlertMessage({ type: 'error', text: 'Please enter a valid phone number. If entering a country code prefix manually, start it with "+".' });
+                          return;
+                        }
+
+                        // Enforce country-specific phone digit limits
+                        let activePrefix = completePhoneCountryCode;
+                        let checkDigits = trimmedPhone.replace(/\D/g, '');
+                        if (trimmedPhone.startsWith('+')) {
+                          const matchedPrefix = ['+971', '+353', '+880', '+977', '+234', '+254', '+233', '+852', '+886', '+358', '+966']
+                            .find(p => trimmedPhone.startsWith(p)) || trimmedPhone.substring(0, 3);
+                          activePrefix = matchedPrefix;
+                          checkDigits = trimmedPhone.replace(activePrefix, '').replace(/\D/g, '');
+                        }
+                        const limit = getPhoneLimit(activePrefix);
+                        if (checkDigits.length !== limit) {
+                          setAlertMessage({ 
+                            type: 'error', 
+                            text: `Phone number must be exactly ${limit} digits for ${activePrefix}. Currently it has ${checkDigits.length} digits.` 
+                          });
+                          return;
+                        }
+                        phoneToSave = finalPhone;
+                      }
+                    }
+
                     const vid = showCheckInPhotoModal;
                     setShowCheckInPhotoModal(null);
-                    await handleApproveCheckIn(vid, capturedPhoto);
+                    await handleApproveCheckIn(vid, capturedPhoto, emailToSave, phoneToSave);
                     setCapturedPhoto(null);
-                  }
-                }}
-                style={{ 
-                  padding: '10px 24px', 
-                  fontSize: '0.9rem', 
-                  background: capturedPhoto ? 'linear-gradient(135deg, #10b981, #059669)' : 'var(--card-border)', 
-                  cursor: capturedPhoto ? 'pointer' : 'not-allowed',
-                  opacity: capturedPhoto ? 1 : 0.6
-                }}
-              >
-                Complete Check-In
-              </button>
+                  }}
+                  style={{ 
+                    padding: '10px 24px', 
+                    fontSize: '0.9rem', 
+                    background: capturedPhoto ? 'linear-gradient(135deg, #10b981, #059669)' : 'var(--card-border)', 
+                    cursor: capturedPhoto ? 'pointer' : 'not-allowed',
+                    opacity: capturedPhoto ? 1 : 0.6
+                  }}
+                >
+                  Complete Check-In
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MODAL: Deny Entry Reason */}
       {showDenyModal && (
