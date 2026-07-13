@@ -333,6 +333,15 @@ const getStatusTone = (status: string) => {
   return 'slate';
 };
 
+const getStatusLabel = (status: string) => {
+  if (!status) return '';
+  const s = status.toLowerCase();
+  if (s === 'denied') return 'Denied Entry';
+  if (s === 'checkedout' || s === 'departed') return 'Checked Out';
+  if (s === 'cancellation_pending_reception') return 'Cancel Requested';
+  return status;
+};
+
 export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('vms_token'));
   const [user, setUser] = useState<any | null>(null);
@@ -1878,15 +1887,22 @@ export default function App() {
   const handleApproveCheckIn = async (visitId: string) => {
     try {
       // Fetch full visit details for the pass before updating
-      const { data: visitData } = await supabase
+      const { data: visitData, error: fetchErr } = await supabase
         .from('Visit')
         .select(`
-          id, purpose, scheduledAt, additionalGuests,
+          id, purpose, scheduledAt, additionalGuests, status,
           Visitor ( fullName, company, visitorType, email, phone ),
           Employee ( fullName, phone, Department ( name ) )
         `)
         .eq('id', visitId)
         .single();
+
+      if (fetchErr) throw fetchErr;
+
+      if (visitData?.status === 'Denied') {
+        setAlertMessage({ type: 'error', text: 'This visit has already been denied entry by the host/employee.' });
+        return;
+      }
 
       const checkedInAt = new Date().toISOString();
       const { error: updateErr } = await supabase
@@ -2545,7 +2561,7 @@ export default function App() {
                             </td>
                             <td>
                               <Badge tone={getStatusTone(item.status)} dot={true}>
-                                {item.status}
+                                {getStatusLabel(item.status)}
                               </Badge>
                             </td>
                             <td style={{ textAlign: 'right' }}>
@@ -2687,7 +2703,7 @@ export default function App() {
                                 </td>
                                 <td>
                                   <Badge tone={getStatusTone(item.status)} dot={true}>
-                                    {item.status}
+                                    {getStatusLabel(item.status)}
                                   </Badge>
                                 </td>
                                 <td style={{ textAlign: 'right' }}>
@@ -2942,7 +2958,7 @@ export default function App() {
 
                               <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
                                 <Badge tone={getStatusTone(item.status)} dot={true}>
-                                  {item.status === 'CheckedOut' ? 'Checked Out' : item.status}
+                                  {getStatusLabel(item.status)}
                                 </Badge>
                               </td>
                             </tr>
@@ -3080,7 +3096,7 @@ export default function App() {
 
                               <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
                                 <Badge tone={getStatusTone(item.status)} dot={true}>
-                                  {item.status}
+                                  {getStatusLabel(item.status)}
                                 </Badge>
                               </td>
 
@@ -3312,7 +3328,7 @@ export default function App() {
 
                               <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
                                 <Badge tone={getStatusTone(item.status)} dot={true}>
-                                  {item.status === 'CheckedOut' ? 'Checked Out' : item.status === 'cancellation_pending_reception' ? 'Cancel Requested' : item.status}
+                                  {getStatusLabel(item.status)}
                                 </Badge>
                               </td>
                             </tr>
@@ -3442,7 +3458,7 @@ export default function App() {
                                 </div>
 
                                 {/* Status badge */}
-                                <Badge tone={getStatusTone(item.status)} dot={true}>{item.status}</Badge>
+                                <Badge tone={getStatusTone(item.status)} dot={true}>{getStatusLabel(item.status)}</Badge>
 
                                 {/* Remark button */}
                                 <button
@@ -3915,7 +3931,7 @@ export default function App() {
                             </td>
                             <td>
                               <span className={`badge badge-${item.status.toLowerCase()}`}>
-                                {item.status}
+                                {getStatusLabel(item.status)}
                               </span>
                             </td>
                             <td style={{ textAlign: 'right' }}>
@@ -4872,7 +4888,7 @@ export default function App() {
                 </div>
                 <div style={{ background: 'var(--card-bg-subtle)', borderRadius: '10px', padding: '14px' }}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '5px' }}>Status</div>
-                  <Badge tone={getStatusTone(selectedInviteDetails.status)} dot={true}>{selectedInviteDetails.status}</Badge>
+                  <Badge tone={getStatusTone(selectedInviteDetails.status)} dot={true}>{getStatusLabel(selectedInviteDetails.status)}</Badge>
                 </div>
               </div>
             )}

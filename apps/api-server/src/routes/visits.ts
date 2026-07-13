@@ -424,6 +424,10 @@ router.put('/:id/status', authenticateToken as any, requirePermission('visit.che
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Visit not found' } });
     }
 
+    if (visit.status === 'Denied' && status === 'CheckedIn') {
+      return res.status(400).json({ success: false, error: { code: 'VISIT_DENIED', message: 'This visit has been denied entry and cannot be checked in' } });
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       const dbVisit = await tx.visit.update({
         where: { id },
