@@ -4822,6 +4822,10 @@ export default function App() {
           {/* Inject print-only CSS so the button row disappears on actual print */}
           <style>{`
             @media print {
+              @page {
+                margin: 0;
+              }
+
               /* Hide buttons */
               .pass-actions { display: none !important; }
 
@@ -4839,6 +4843,7 @@ export default function App() {
               body, html {
                 background: #ffffff !important;
                 overflow: visible !important;
+                margin: 1.5cm !important;
               }
 
               /* Hide everything except the pass card */
