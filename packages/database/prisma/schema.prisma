@@ -1,0 +1,271 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum VisitorType {
+  Guest
+  Vendor
+  Contractor
+  Candidate
+  VIP
+  Emergency
+}
+
+enum VisitStatus {
+  Expected
+  CheckedIn
+  Waiting
+  InMeeting
+  CheckedOut
+  Denied
+  Cancelled
+}
+
+enum NotificationChannel {
+  Email
+  SMS
+  Push
+  InApp
+}
+
+enum NotificationStatus {
+  Queued
+  Sent
+  Failed
+  Read
+}
+
+enum DocumentType {
+  ID
+  NDA
+  Permit
+  Insurance
+  Other
+}
+
+enum SeverityLevel {
+  Low
+  Medium
+  High
+}
+
+model Role {
+  id           String           @id @default(uuid())
+  name         String           @unique
+  description  String?
+  isSystemRole Boolean          @default(false)
+  users        User[]
+  permissions  RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  code        String           @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model Branch {
+  id          String       @id @default(uuid())
+  name        String
+  address     String
+  timezone    String
+  isActive    Boolean      @default(true)
+  users       User[]
+  employees   Employee[]
+  visits      Visit[]
+  departments Department[]
+  settings    Setting[]
+}
+
+model Department {
+  id        String     @id @default(uuid())
+  name      String
+  branchId  String
+  branch    Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  employees Employee[]
+}
+
+model User {
+  id              String      @id @default(uuid())
+  email           String      @unique
+  passwordHash    String
+  fullName        String
+  roleId          String
+  role            Role        @relation(fields: [roleId], references: [id])
+  branchId        String
+  branch          Branch      @relation(fields: [branchId], references: [id])
+  phone           String?
+  isActive        Boolean     @default(true)
+  mfaEnabled      Boolean     @default(false)
+  lastLoginAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  employeeProfile Employee?   @relation(fields: [employeeId], references: [id])
+  employeeId      String?     @unique
+  auditLogs       AuditLog[]
+  addedBlacklists Blacklist[]
+  notifications   Notification[]
+}
+
+model Employee {
+  id           String       @id @default(uuid())
+  fullName     String
+  email        String       @unique
+  phone        String
+  floor        String?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  departmentId String
+  department   Department   @relation(fields: [departmentId], references: [id])
+  branchId     String
+  branch       Branch       @relation(fields: [branchId], references: [id])
+  user         User?
+  visits       Visit[]
+  invitations  Invitation[]
+}
+
+model Visitor {
+  id               String       @id @default(uuid())
+  fullName         String
+  email            String?
+  phone            String?
+  photoUrl         String?
+  idDocumentType   String?
+  idDocumentNumber String?
+  company          String?
+  visitorType      VisitorType  @default(Guest)
+  isBlacklisted    Boolean      @default(false)
+  location         String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  visits           Visit[]
+  invitations      Invitation[]
+  blacklists       Blacklist[]
+  documents        Document[]
+  notifications    Notification[]
+}
+
+model Visit {
+  id             String         @id @default(uuid())
+  visitorId      String
+  visitor        Visitor        @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  hostEmployeeId String
+  host           Employee       @relation(fields: [hostEmployeeId], references: [id])
+  invitationId   String?        @unique
+  invitation     Invitation?    @relation(fields: [invitationId], references: [id])
+  branchId       String
+  branch         Branch         @relation(fields: [branchId], references: [id])
+  purpose        String
+  status         VisitStatus    @default(Expected)
+  scheduledAt    DateTime?
+  checkedInAt    DateTime?
+  checkedOutAt   DateTime?
+  deniedReason   String?
+  zoneAccess     String?
+  remarks        String?
+  additionalGuests Int          @default(0)
+  createdAt      DateTime       @default(now())
+  badge          Badge?
+  documents      Document[]
+  notifications  Notification[]
+}
+
+model Invitation {
+  id             String     @id @default(uuid())
+  visitorId      String
+  visitor        Visitor    @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  hostEmployeeId String
+  host           Employee   @relation(fields: [hostEmployeeId], references: [id])
+  qrToken        String     @unique
+  scheduledAt    DateTime
+  expiresAt      DateTime
+  createdAt      DateTime   @default(now())
+  visit          Visit?
+}
+
+model Notification {
+  id                 String              @id @default(uuid())
+  recipientUserId    String?
+  recipientUser      User?               @relation(fields: [recipientUserId], references: [id])
+  recipientVisitorId String?
+  recipientVisitor   Visitor?            @relation(fields: [recipientVisitorId], references: [id])
+  visitId            String?
+  visit              Visit?              @relation(fields: [visitId], references: [id])
+  channel            NotificationChannel
+  message            String
+  status             NotificationStatus  @default(Queued)
+  sentAt             DateTime?
+  createdAt          DateTime            @default(now())
+}
+
+model Badge {
+  id          String    @id @default(uuid())
+  visitId     String    @unique
+  visit       Visit     @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  printedAt   DateTime?
+  printCount  Int       @default(0)
+  badgeNumber String    @unique
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String?
+  actor       User?    @relation(fields: [actorUserId], references: [id])
+  action      String
+  entityType  String
+  entityId    String
+  beforeState Json?
+  afterState  Json?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+}
+
+model Blacklist {
+  id               String        @id @default(uuid())
+  visitorId        String?
+  visitor          Visitor?      @relation(fields: [visitorId], references: [id])
+  fullName         String
+  idDocumentNumber String?
+  reason           String
+  severity         SeverityLevel @default(Medium)
+  addedByUserId    String
+  addedByUser      User          @relation(fields: [addedByUserId], references: [id])
+  createdAt        DateTime      @default(now())
+}
+
+model Setting {
+  id       String  @id @default(uuid())
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  key      String
+  value    Json
+
+  @@unique([branchId, key])
+}
+
+model Document {
+  id           String       @id @default(uuid())
+  visitorId    String?
+  visitor      Visitor?     @relation(fields: [visitorId], references: [id])
+  visitId      String?
+  visit        Visit?       @relation(fields: [visitId], references: [id])
+  documentType DocumentType
+  fileUrl      String
+  expiresAt    DateTime?
+  uploadedAt   DateTime     @default(now())
+}
