@@ -1909,8 +1909,8 @@ export default function App() {
         entityId: visitId
       });
 
-      // Show printable pass
-      if (visitData) {
+      // Show printable pass (only for Security/Receptionist, not Employee)
+      if (visitData && user?.role !== 'Employee') {
         const v = visitData.Visitor as any;
         const e = visitData.Employee as any;
         const dept = Array.isArray(e?.Department) ? e.Department[0] : e?.Department;
@@ -4672,11 +4672,11 @@ export default function App() {
             <div style={{ padding: '28px 32px', background: '#fff' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '22px' }}>
                 <div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>VISITOR</div>
+                  <div style={{ fontSize: '0.65rem', color: '#6b7280', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>VISITOR</div>
                   <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111' }}>{showPassModal.visitorName}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{showPassModal.visitorCompany || 'Independent'}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{showPassModal.visitorCompany || 'Independent'}</div>
                   {showPassModal.visitorPhone && (
-                    <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>{showPassModal.visitorPhone}</div>
+                    <div style={{ fontSize: '0.82rem', color: '#6b7280', marginTop: '2px' }}>{showPassModal.visitorPhone}</div>
                   )}
                   <div style={{ marginTop: '6px', display: 'flex', gap: '6px', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.72rem', background: '#e0e7ff', color: '#3730a3', padding: '3px 10px', borderRadius: '99px', fontWeight: 600 }}>
@@ -4690,44 +4690,44 @@ export default function App() {
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>HOST EMPLOYEE</div>
+                  <div style={{ fontSize: '0.65rem', color: '#6b7280', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>HOST EMPLOYEE</div>
                   <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111' }}>{showPassModal.hostName}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{showPassModal.department}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{showPassModal.hostPhone}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{showPassModal.department}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{showPassModal.hostPhone}</div>
                 </div>
               </div>
 
               <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '18px', marginBottom: '22px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
                 <div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>PURPOSE</div>
+                  <div style={{ fontSize: '0.65rem', color: '#6b7280', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>PURPOSE</div>
                   <div style={{ fontSize: '0.9rem', color: '#111', fontWeight: 500 }}>{showPassModal.purpose}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>CHECK-IN TIME</div>
+                  <div style={{ fontSize: '0.65rem', color: '#6b7280', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>CHECK-IN TIME</div>
                   <div style={{ fontSize: '0.9rem', color: '#111', fontWeight: 500 }}>
                     {new Date(showPassModal.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
+                  <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
                     {new Date(showPassModal.checkedInAt).toLocaleDateString()}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>ZONE ACCESS</div>
+                  <div style={{ fontSize: '0.65rem', color: '#6b7280', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>ZONE ACCESS</div>
                   <div style={{ fontSize: '0.9rem', color: '#111', fontWeight: 500 }}>{showPassModal.zoneAccess}</div>
                 </div>
               </div>
 
               {/* Signature Block */}
               <div style={{ border: '1px dashed #d1d5db', borderRadius: '10px', padding: '18px 20px', background: '#f9fafb' }}>
-                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '14px' }}>HOST SIGNATURE (to be collected post-visit &amp; submitted to security)</div>
+                <div style={{ fontSize: '0.65rem', color: '#6b7280', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '14px' }}>HOST SIGNATURE (to be collected post-visit &amp; submitted to security)</div>
                 <div style={{ display: 'flex', gap: '28px' }}>
                   <div style={{ flex: 2 }}>
                     <div style={{ borderBottom: '1px solid #9ca3af', height: '36px', marginBottom: '5px' }}></div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>Signature of {showPassModal.hostName}</div>
+                    <div style={{ fontSize: '0.72rem', color: '#6b7280' }}>Signature of {showPassModal.hostName}</div>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ borderBottom: '1px solid #9ca3af', height: '36px', marginBottom: '5px' }}></div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>Date</div>
+                    <div style={{ fontSize: '0.72rem', color: '#6b7280' }}>Date</div>
                   </div>
                 </div>
               </div>
