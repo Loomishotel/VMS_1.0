@@ -626,3 +626,61 @@ html:not(.dark) .btn-secondary:hover {
   border-color: var(--active-industries-border);
   box-shadow: var(--active-industries-shadow);
 }
+
+/* Print Pass Card Styles */
+#visitor-pass-card {
+  max-width: 640px;
+  width: 100%;
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+
+.visitor-pass-body {
+  padding: 28px 32px;
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+.visitor-pass-label {
+  font-size: 0.65rem !important;
+  color: #4b5563 !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
+  margin-bottom: 4px !important;
+}
+
+.visitor-pass-value {
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  color: #111111 !important;
+}
+
+.visitor-pass-subvalue {
+  font-size: 0.85rem !important;
+  color: #4b5563 !important;
+}
+
+.visitor-pass-sig-block {
+  border: 1px dashed #d1d5db !important;
+  border-radius: 10px !important;
+  padding: 18px 20px !important;
+  background: #f9fafb !important;
+  color: #111111 !important;
+}
+
+.visitor-pass-sig-label {
+  font-size: 0.65rem !important;
+  color: #4b5563 !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
+  margin-bottom: 14px !important;
+}
+
+.visitor-pass-sig-text {
+  font-size: 0.72rem !important;
+  color: #4b5563 !important;
+}
+

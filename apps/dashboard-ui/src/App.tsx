@@ -3088,19 +3088,6 @@ export default function App() {
                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                                   {item.status === 'Waiting' && (
                                     <>
-                                      <Button variant="primary" style={{ 
-                                        padding: '8px 16px', 
-                                        fontSize: '0.8rem', 
-                                        fontWeight: 600,
-                                        borderRadius: '8px',
-                                        background: 'linear-gradient(135deg,#10b981,#047857)',
-                                        border: 'none',
-                                        color: '#fff',
-                                        cursor: 'pointer',
-                                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
-                                      }} onClick={() => handleApproveCheckIn(item.id)}>
-                                        Approve Entry
-                                      </Button>
                                       <Button variant="danger" style={{ 
                                         padding: '8px 16px', 
                                         fontSize: '0.8rem',
@@ -4669,14 +4656,14 @@ export default function App() {
             </div>
 
             {/* Pass Body */}
-            <div style={{ padding: '28px 32px', background: '#fff' }}>
+            <div className="visitor-pass-body">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '22px' }}>
                 <div>
-                  <div style={{ fontSize: '0.65rem', color: '#4b5563', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>VISITOR</div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111' }}>{showPassModal.visitorName}</div>
-                  <div style={{ fontSize: '0.85rem', color: '#4b5563' }}>{showPassModal.visitorCompany || 'Independent'}</div>
+                  <div className="visitor-pass-label">VISITOR</div>
+                  <div className="visitor-pass-value">{showPassModal.visitorName}</div>
+                  <div className="visitor-pass-subvalue">{showPassModal.visitorCompany || 'Independent'}</div>
                   {showPassModal.visitorPhone && (
-                    <div style={{ fontSize: '0.82rem', color: '#4b5563', marginTop: '2px' }}>{showPassModal.visitorPhone}</div>
+                    <div className="visitor-pass-subvalue" style={{ marginTop: '2px' }}>{showPassModal.visitorPhone}</div>
                   )}
                   <div style={{ marginTop: '6px', display: 'flex', gap: '6px', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.72rem', background: '#e0e7ff', color: '#3730a3', padding: '3px 10px', borderRadius: '99px', fontWeight: 600 }}>
@@ -4690,44 +4677,44 @@ export default function App() {
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.65rem', color: '#4b5563', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>HOST EMPLOYEE</div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111' }}>{showPassModal.hostName}</div>
-                  <div style={{ fontSize: '0.85rem', color: '#4b5563' }}>{showPassModal.department}</div>
-                  <div style={{ fontSize: '0.85rem', color: '#4b5563' }}>{showPassModal.hostPhone}</div>
+                  <div className="visitor-pass-label">HOST EMPLOYEE</div>
+                  <div className="visitor-pass-value">{showPassModal.hostName}</div>
+                  <div className="visitor-pass-subvalue">{showPassModal.department}</div>
+                  <div className="visitor-pass-subvalue">{showPassModal.hostPhone}</div>
                 </div>
               </div>
 
               <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '18px', marginBottom: '22px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
                 <div>
-                  <div style={{ fontSize: '0.65rem', color: '#4b5563', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>PURPOSE</div>
+                  <div className="visitor-pass-label">PURPOSE</div>
                   <div style={{ fontSize: '0.9rem', color: '#111', fontWeight: 500 }}>{showPassModal.purpose}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.65rem', color: '#4b5563', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>CHECK-IN TIME</div>
+                  <div className="visitor-pass-label">CHECK-IN TIME</div>
                   <div style={{ fontSize: '0.9rem', color: '#111', fontWeight: 500 }}>
                     {new Date(showPassModal.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#4b5563' }}>
+                  <div className="visitor-pass-subvalue">
                     {new Date(showPassModal.checkedInAt).toLocaleDateString()}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.65rem', color: '#4b5563', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '4px' }}>ZONE ACCESS</div>
+                  <div className="visitor-pass-label">ZONE ACCESS</div>
                   <div style={{ fontSize: '0.9rem', color: '#111', fontWeight: 500 }}>{showPassModal.zoneAccess}</div>
                 </div>
               </div>
 
               {/* Signature Block */}
-              <div style={{ border: '1px dashed #d1d5db', borderRadius: '10px', padding: '18px 20px', background: '#f9fafb' }}>
-                <div style={{ fontSize: '0.65rem', color: '#4b5563', fontWeight: 600, letterSpacing: '0.12em', marginBottom: '14px' }}>HOST SIGNATURE (to be collected post-visit &amp; submitted to security)</div>
+              <div className="visitor-pass-sig-block">
+                <div className="visitor-pass-sig-label">HOST SIGNATURE (to be collected post-visit &amp; submitted to security)</div>
                 <div style={{ display: 'flex', gap: '28px' }}>
                   <div style={{ flex: 2 }}>
                     <div style={{ borderBottom: '1px solid #9ca3af', height: '36px', marginBottom: '5px' }}></div>
-                    <div style={{ fontSize: '0.72rem', color: '#4b5563' }}>Signature of {showPassModal.hostName}</div>
+                    <div className="visitor-pass-sig-text">Signature of {showPassModal.hostName}</div>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ borderBottom: '1px solid #9ca3af', height: '36px', marginBottom: '5px' }}></div>
-                    <div style={{ fontSize: '0.72rem', color: '#4b5563' }}>Date</div>
+                    <div className="visitor-pass-sig-text">Date</div>
                   </div>
                 </div>
               </div>
