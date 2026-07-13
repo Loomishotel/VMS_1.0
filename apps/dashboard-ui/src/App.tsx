@@ -446,10 +446,6 @@ export default function App() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 320, facingMode: 'user' } });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
       setIsCameraActive(true);
     } catch (err) {
       console.error('Error accessing camera:', err);
@@ -489,6 +485,13 @@ export default function App() {
       handleApproveCheckIn(visitId);
     }
   };
+
+  useEffect(() => {
+    if (isCameraActive && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(e => console.error("Error playing video:", e));
+    }
+  }, [isCameraActive]);
 
   useEffect(() => {
     return () => {
