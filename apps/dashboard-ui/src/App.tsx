@@ -19,7 +19,9 @@ import {
   Calendar,
   MessageSquare,
   FileText,
-  Edit2
+  Edit2,
+  Camera,
+  RefreshCw
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -419,6 +421,13 @@ export default function App() {
   const [showDenyModal, setShowDenyModal] = useState<string | null>(null); // holds visitId
   const [denyReason, setDeniedReason] = useState('');
   const [showPassModal, setShowPassModal] = useState<any | null>(null); // holds printed pass data
+  const [showCheckInPhotoModal, setShowCheckInPhotoModal] = useState<string | null>(null); // holds visitId
+
+  // Camera states
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Future invitations for Check Invitation
   const [futureInvitations, setFutureInvitations] = useState<any[]>([]);
@@ -431,6 +440,77 @@ export default function App() {
   // Visitor visit details modal/panel for Security
   const [selectedInviteDetails, setSelectedInviteDetails] = useState<any | null>(null); // holds invitation/visit record
   const [detailPanelTab, setDetailPanelTab] = useState<'general' | 'host' | 'remarks'>('general');
+
+  // Camera helper functions
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 320, facingMode: 'user' } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      setIsCameraActive(true);
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      setAlertMessage({ type: 'error', text: 'Unable to access device camera. Please check camera permissions.' });
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 320;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, 320, 320);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        setCapturedPhoto(dataUrl);
+        stopCamera();
+      }
+    }
+  };
+
+  const triggerCheckIn = (visitId: string) => {
+    if (user?.role === 'Security' || user?.role === 'Receptionist') {
+      setShowCheckInPhotoModal(visitId);
+      setCapturedPhoto(null);
+      setIsCameraActive(false);
+    } else {
+      handleApproveCheckIn(visitId);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showPreRegModal) {
+      stopCamera();
+      setCapturedPhoto(null);
+    }
+  }, [showPreRegModal]);
+
+  useEffect(() => {
+    if (!showCheckInPhotoModal) {
+      stopCamera();
+      setCapturedPhoto(null);
+    }
+  }, [showCheckInPhotoModal]);
 
   // Past records states
   const [pastRecords, setPastRecords] = useState<any[]>([]);
@@ -1807,13 +1887,19 @@ export default function App() {
             phone: finalPhone || null,
             company: preCompany || null,
             visitorType: preType,
-            location: preLocation || null
+            location: preLocation || null,
+            photoUrl: capturedPhoto || null
           })
           .select('id')
           .single();
 
         if (crErr) throw crErr;
         if (created) visitorId = created.id;
+      } else if (capturedPhoto) {
+        await supabase
+          .from('Visitor')
+          .update({ photoUrl: capturedPhoto })
+          .eq('id', visitorId);
       }
 
       // 2. Generate unique QR Token and Check-In Code (cryptographically secure)
@@ -1884,14 +1970,14 @@ export default function App() {
   };
 
   // Check In visitor and generate printable pass
-  const handleApproveCheckIn = async (visitId: string) => {
+  const handleApproveCheckIn = async (visitId: string, photoToAttach?: string | null) => {
     try {
       // Fetch full visit details for the pass before updating
       const { data: visitData, error: fetchErr } = await supabase
         .from('Visit')
         .select(`
-          id, purpose, scheduledAt, additionalGuests, status,
-          Visitor ( fullName, company, visitorType, email, phone ),
+          id, visitorId, purpose, scheduledAt, additionalGuests, status,
+          Visitor ( fullName, company, visitorType, email, phone, photoUrl ),
           Employee ( fullName, phone, Department ( name ) )
         `)
         .eq('id', visitId)
@@ -1902,6 +1988,16 @@ export default function App() {
       if (visitData?.status === 'Denied') {
         setAlertMessage({ type: 'error', text: 'This visit has already been denied entry by the host/employee.' });
         return;
+      }
+
+      if (photoToAttach && visitData?.visitorId) {
+        await supabase
+          .from('Visitor')
+          .update({ photoUrl: photoToAttach })
+          .eq('id', visitData.visitorId);
+        if (visitData.Visitor) {
+          (visitData.Visitor as any).photoUrl = photoToAttach;
+        }
       }
 
       const checkedInAt = new Date().toISOString();
@@ -1938,6 +2034,7 @@ export default function App() {
           visitorType: v?.visitorType || 'Guest',
           visitorEmail: v?.email || '',
           visitorPhone: v?.phone || '',
+          photoUrl: v?.photoUrl || '',
           hostName: e?.fullName || '',
           hostPhone: e?.phone || '',
           department: dept?.name || '',
@@ -2578,7 +2675,7 @@ export default function App() {
                                 )}
                                 {item.status === 'Waiting' && (
                                   <>
-                                    <Button variant="primary" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => handleApproveCheckIn(item.id)} leftIcon={<CheckCircle size={12} />}>
+                                    <Button variant="primary" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => triggerCheckIn(item.id)} leftIcon={<CheckCircle size={12} />}>
                                       Check In
                                     </Button>
                                     <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
@@ -3937,7 +4034,7 @@ export default function App() {
                             <td style={{ textAlign: 'right' }}>
                               {item.status === 'Waiting' && user.role === 'Receptionist' && (
                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                  <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleApproveCheckIn(item.id)}>
+                                  <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => triggerCheckIn(item.id)}>
                                     Approve Entry
                                   </button>
                                   <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
@@ -4451,6 +4548,118 @@ export default function App() {
         </div>
       )}
 
+      {/* MODAL: Check-In Photo Capture (Security only) */}
+      {showCheckInPhotoModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ 
+            maxWidth: '500px', 
+            width: '90%', 
+            background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
+            borderRadius: '12px',
+            padding: '36px',
+            textAlign: 'center'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--card-border)', paddingBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                Visitor Photo Capture
+              </h3>
+              <button 
+                style={{ 
+                  background: 'none', border: 'none', 
+                  color: 'var(--color-text-secondary)', 
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }} 
+                onClick={() => {
+                  stopCamera();
+                  setShowCheckInPhotoModal(null);
+                  setCapturedPhoto(null);
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
+              Please capture a photo of the visitor to proceed with check-in.
+            </p>
+
+            {/* Video / Captured Image Container */}
+            <div style={{ position: 'relative', width: '280px', height: '280px', borderRadius: '12px', overflow: 'hidden', border: '2px solid var(--card-border)', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+              {isCameraActive ? (
+                <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} autoPlay playsInline muted />
+              ) : capturedPhoto ? (
+                <img src={capturedPhoto} alt="Captured Visitor" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ color: 'var(--color-text-secondary)' }}>
+                  <User size={64} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+                  <span style={{ fontSize: '0.8rem', display: 'block' }}>Camera Off</span>
+                </div>
+              )}
+            </div>
+
+            {/* Camera Control Buttons */}
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '24px' }}>
+              {!isCameraActive && !capturedPhoto && (
+                <button type="button" className="btn btn-primary" onClick={startCamera} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Camera size={16} /> Start Camera
+                </button>
+              )}
+              {isCameraActive && (
+                <button type="button" className="btn btn-success" onClick={capturePhoto} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', color: '#fff' }}>
+                  <Camera size={16} /> Capture Photo
+                </button>
+              )}
+              {(isCameraActive || capturedPhoto) && (
+                <button type="button" className="btn btn-secondary" onClick={() => { stopCamera(); setCapturedPhoto(null); }} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <RefreshCw size={16} /> Retake / Clear
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid var(--card-border)', paddingTop: '20px' }}>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={() => {
+                  stopCamera();
+                  setShowCheckInPhotoModal(null);
+                  setCapturedPhoto(null);
+                }}
+                style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                disabled={!capturedPhoto}
+                onClick={async () => {
+                  if (showCheckInPhotoModal && capturedPhoto) {
+                    const vid = showCheckInPhotoModal;
+                    setShowCheckInPhotoModal(null);
+                    await handleApproveCheckIn(vid, capturedPhoto);
+                    setCapturedPhoto(null);
+                  }
+                }}
+                style={{ 
+                  padding: '10px 24px', 
+                  fontSize: '0.9rem', 
+                  background: capturedPhoto ? 'linear-gradient(135deg, #10b981, #059669)' : 'var(--card-border)', 
+                  cursor: capturedPhoto ? 'pointer' : 'not-allowed',
+                  opacity: capturedPhoto ? 1 : 0.6
+                }}
+              >
+                Complete Check-In
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: Deny Entry Reason */}
       {showDenyModal && (
         <div className="modal-overlay">
@@ -4673,30 +4882,67 @@ export default function App() {
 
             {/* Pass Body */}
             <div className="visitor-pass-body">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '22px' }}>
-                <div>
-                  <div className="visitor-pass-label">VISITOR</div>
-                  <div className="visitor-pass-value">{showPassModal.visitorName}</div>
-                  <div className="visitor-pass-subvalue">{showPassModal.visitorCompany || 'Independent'}</div>
-                  {showPassModal.visitorPhone && (
-                    <div className="visitor-pass-subvalue" style={{ marginTop: '2px' }}>{showPassModal.visitorPhone}</div>
+              <div style={{ display: 'flex', gap: '24px', marginBottom: '22px' }}>
+                {/* Left Side: Photo */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
+                  {showPassModal.photoUrl ? (
+                    <img 
+                      src={showPassModal.photoUrl} 
+                      alt="Visitor" 
+                      style={{ 
+                        width: '120px', 
+                        height: '120px', 
+                        objectFit: 'cover', 
+                        borderRadius: '8px', 
+                        border: '2px solid #e5e7eb',
+                        backgroundColor: '#f3f4f6'
+                      }} 
+                    />
+                  ) : (
+                    <div style={{ 
+                      width: '120px', 
+                      height: '120px', 
+                      borderRadius: '8px', 
+                      border: '2px dashed #d1d5db', 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      color: '#9ca3af',
+                      backgroundColor: '#f9fafb'
+                    }}>
+                      <User size={32} style={{ color: '#9ca3af' }} />
+                      <span style={{ fontSize: '0.65rem', marginTop: '4px', color: '#9ca3af', fontWeight: 600 }}>No Photo</span>
+                    </div>
                   )}
-                  <div style={{ marginTop: '6px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.72rem', background: '#e0e7ff', color: '#3730a3', padding: '3px 10px', borderRadius: '99px', fontWeight: 600 }}>
-                      {showPassModal.visitorType}
-                    </span>
-                    {showPassModal.additionalGuests > 0 && (
-                      <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#92400e', padding: '3px 10px', borderRadius: '99px', fontWeight: 600 }}>
-                        +{showPassModal.additionalGuests} {showPassModal.additionalGuests === 1 ? 'Guest' : 'Guests'}
-                      </span>
-                    )}
-                  </div>
                 </div>
-                <div>
-                  <div className="visitor-pass-label">HOST EMPLOYEE</div>
-                  <div className="visitor-pass-value">{showPassModal.hostName}</div>
-                  <div className="visitor-pass-subvalue">{showPassModal.department}</div>
-                  <div className="visitor-pass-subvalue">{showPassModal.hostPhone}</div>
+
+                {/* Right Side: Visitor & Host Information */}
+                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div>
+                    <div className="visitor-pass-label">VISITOR</div>
+                    <div className="visitor-pass-value">{showPassModal.visitorName}</div>
+                    <div className="visitor-pass-subvalue">{showPassModal.visitorCompany || 'Independent'}</div>
+                    {showPassModal.visitorPhone && (
+                      <div className="visitor-pass-subvalue" style={{ marginTop: '2px' }}>{showPassModal.visitorPhone}</div>
+                    )}
+                    <div style={{ marginTop: '6px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.72rem', background: '#e0e7ff', color: '#3730a3', padding: '3px 10px', borderRadius: '99px', fontWeight: 600 }}>
+                        {showPassModal.visitorType}
+                      </span>
+                      {showPassModal.additionalGuests > 0 && (
+                        <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#92400e', padding: '3px 10px', borderRadius: '99px', fontWeight: 600 }}>
+                          +{showPassModal.additionalGuests} {showPassModal.additionalGuests === 1 ? 'Guest' : 'Guests'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="visitor-pass-label">HOST EMPLOYEE</div>
+                    <div className="visitor-pass-value">{showPassModal.hostName}</div>
+                    <div className="visitor-pass-subvalue">{showPassModal.department}</div>
+                    <div className="visitor-pass-subvalue">{showPassModal.hostPhone}</div>
+                  </div>
                 </div>
               </div>
 
