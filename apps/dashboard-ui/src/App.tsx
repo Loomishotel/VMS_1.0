@@ -717,6 +717,13 @@ export default function App() {
     return `${mins}:${remainingSecs.toString().padStart(2, '0')}`;
   };
 
+  const getLocalISOString = () => {
+    const date = new Date();
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().slice(0, 16);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
@@ -1286,35 +1293,40 @@ export default function App() {
           )
         `)
         .eq('branchId', user.branchId) // Isolating by active branch
-        .or(`createdAt.gte.${startOfDay.toISOString()},scheduledAt.gte.${startOfDay.toISOString()},status.in.("Expected","Waiting","CheckedIn")`)
+        .or(`createdAt.gte.${startOfDay.toISOString()},scheduledAt.gte.${startOfDay.toISOString()}`)
         .order('createdAt', { ascending: false });
 
       if (error) throw error;
 
       if (data) {
-        const mapped = data.map((v: any) => ({
-          id: v.id,
-          visitorId: v.visitorId,
-          visitorName: v.Visitor?.fullName || 'Visitor',
-          visitorEmail: v.Visitor?.email || '',
-          visitorPhone: v.Visitor?.phone || '',
-          visitorCompany: v.Visitor?.company || '',
-          visitorType: v.Visitor?.visitorType || 'Guest',
-          hostId: v.Employee?.id || '',
-          hostName: v.Employee?.fullName || 'Host',
-          hostEmail: v.Employee?.email || '',
-          hostPhone: v.Employee?.phone || '',
-          purpose: v.purpose,
-          status: v.status,
-          scheduledAt: v.scheduledAt,
-          createdAt: v.createdAt,
-          checkedInAt: v.checkedInAt,
-          checkedOutAt: v.checkedOutAt,
-          deniedReason: v.deniedReason || '',
-          zoneAccess: v.zoneAccess || '',
-          photoUrl: v.Visitor?.photoUrl || '',
-          additionalGuests: v.additionalGuests || 0
-        }));
+        const mapped = data
+          .map((v: any) => ({
+            id: v.id,
+            visitorId: v.visitorId,
+            visitorName: v.Visitor?.fullName || 'Visitor',
+            visitorEmail: v.Visitor?.email || '',
+            visitorPhone: v.Visitor?.phone || '',
+            visitorCompany: v.Visitor?.company || '',
+            visitorType: v.Visitor?.visitorType || 'Guest',
+            hostId: v.Employee?.id || '',
+            hostName: v.Employee?.fullName || 'Host',
+            hostEmail: v.Employee?.email || '',
+            hostPhone: v.Employee?.phone || '',
+            purpose: v.purpose,
+            status: v.status,
+            scheduledAt: v.scheduledAt,
+            createdAt: v.createdAt,
+            checkedInAt: v.checkedInAt,
+            checkedOutAt: v.checkedOutAt,
+            deniedReason: v.deniedReason || '',
+            zoneAccess: v.zoneAccess || '',
+            photoUrl: v.Visitor?.photoUrl || '',
+            additionalGuests: v.additionalGuests || 0
+          }))
+          .filter((v: any) => {
+            const time = new Date(v.scheduledAt || v.createdAt).getTime();
+            return time >= startOfDay.getTime() && time <= endOfDay.getTime();
+          });
         setQueue(mapped);
       }
     } catch (err: any) {
@@ -1698,6 +1710,18 @@ export default function App() {
   const handlePreRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!preName || !preHostId || !prePurpose || !preScheduled) return;
+
+    // Validate that scheduled date and time is not in the past
+    if (new Date(preScheduled).getTime() < Date.now() - 60000) {
+      setAlertMessage({ type: 'error', text: 'Scheduled date and time cannot be in the past.' });
+      return;
+    }
+
+    // Validate guest count limits (Max 10 for non-VIP)
+    if (preType !== 'VIP' && preGuestCount > 10) {
+      setAlertMessage({ type: 'error', text: 'Number of guests cannot exceed 10 for non-VIP visitors.' });
+      return;
+    }
 
     // Validate Email if entered
     if (preEmail.trim()) {
@@ -3635,7 +3659,7 @@ export default function App() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px', marginBottom: '20px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor Classification</label>
-                      <select className="form-input" value={preType} onChange={(e: any) => setPreType(e.target.value)} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
+                      <select className="form-input" value={preType} onChange={(e: any) => { const newType = e.target.value; setPreType(newType); if (newType !== 'VIP' && preGuestCount > 10) setPreGuestCount(10); }} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
                         <option value="Guest">Guest</option>
                         <option value="Vendor">Vendor</option>
                         <option value="Contractor">Contractor</option>
@@ -3645,7 +3669,7 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Scheduled Date &amp; Time *</label>
-                      <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
+                      <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Number of Guests</label>
@@ -3653,8 +3677,12 @@ export default function App() {
                         type="number" 
                         className="form-input" 
                         min="0"
+                        max={preType === 'VIP' ? undefined : 10}
                         value={preGuestCount} 
-                        onChange={e => setPreGuestCount(Math.max(0, parseInt(e.target.value) || 0))} 
+                        onChange={e => {
+                          const val = Math.max(0, parseInt(e.target.value) || 0);
+                          setPreGuestCount(preType === 'VIP' ? val : Math.min(10, val));
+                        }} 
                         style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} 
                       />
                     </div>
@@ -4355,7 +4383,7 @@ export default function App() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor Classification</label>
-                  <select className="form-input" value={preType} onChange={(e: any) => setPreType(e.target.value)} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
+                  <select className="form-input" value={preType} onChange={(e: any) => { const newType = e.target.value; setPreType(newType); if (newType !== 'VIP' && preGuestCount > 10) setPreGuestCount(10); }} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
                     <option value="Guest">Guest</option>
                     <option value="Vendor">Vendor</option>
                     <option value="Contractor">Contractor</option>
@@ -4365,7 +4393,7 @@ export default function App() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Scheduled Date &amp; Time *</label>
-                  <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
+                  <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Number of Guests</label>
@@ -4373,8 +4401,12 @@ export default function App() {
                     type="number" 
                     className="form-input" 
                     min="0"
+                    max={preType === 'VIP' ? undefined : 10}
                     value={preGuestCount} 
-                    onChange={e => setPreGuestCount(Math.max(0, parseInt(e.target.value) || 0))} 
+                    onChange={e => {
+                      const val = Math.max(0, parseInt(e.target.value) || 0);
+                      setPreGuestCount(preType === 'VIP' ? val : Math.min(10, val));
+                    }} 
                     style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} 
                   />
                 </div>

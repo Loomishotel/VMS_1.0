@@ -595,3 +595,34 @@ html:not(.dark) .btn-secondary:hover {
 .pulse-slow {
   animation: pulseSlow 2s ease-in-out infinite;
 }
+
+/* Tab Buttons inside details panel */
+.tab-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid transparent;
+  opacity: 0.75;
+  transition: var(--transition-theme);
+}
+
+.tab-button:hover {
+  opacity: 1;
+  background: var(--menu-item-bg-hover);
+  border-color: var(--card-border);
+}
+
+.tab-button.active {
+  opacity: 1;
+  background: var(--active-industries-bg);
+  color: var(--active-industries-text);
+  border-color: var(--active-industries-border);
+  box-shadow: var(--active-industries-shadow);
+}
