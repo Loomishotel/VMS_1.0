@@ -12,6 +12,8 @@ import employeesRouter from './routes/employees';
 import analyticsRouter from './routes/analytics';
 
 // Load environment variables
+import path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config();
 
 const app = express();
@@ -54,6 +56,8 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Start Background Notification Dispatcher Simulation
 // Polling the database every 10 seconds to dispatch queued messages
+let dbConnectionWarningShown = false;
+
 async function startNotificationDispatcher() {
   setInterval(async () => {
     try {
@@ -81,8 +85,15 @@ async function startNotificationDispatcher() {
           });
         }
       }
-    } catch (error) {
-      console.error('[Notification Engine Error]:', error);
+    } catch (error: any) {
+      if (error.message && (error.message.includes('DATABASE_URL') || error.message.includes('Environment variable not found') || error.message.includes('PrismaClientInitializationError'))) {
+        if (!dbConnectionWarningShown) {
+          console.warn('\n⚠️  [Notification Engine]: DATABASE_URL is not set or is incorrect in .env. Notification dispatching is suspended.\n');
+          dbConnectionWarningShown = true;
+        }
+      } else {
+        console.error('[Notification Engine Error]:', error);
+      }
     }
   }, 10000);
 }
