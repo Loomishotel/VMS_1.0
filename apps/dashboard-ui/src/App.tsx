@@ -933,8 +933,11 @@ export default function App() {
     setLoginError(null);
     setLoading(true);
 
+    let checkPassed = false;
+    let checkData: any = null;
+
+    // 1. Perform backend pre-login security check (Email block, CAPTCHA, IP rate limits)
     try {
-      // 1. Perform backend pre-login security check (Email block, CAPTCHA, IP rate limits)
       const checkRes = await fetch('http://localhost:5000/api/v1/auth/pre-login-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -943,23 +946,29 @@ export default function App() {
           captchaAnswer: captchaInput
         })
       });
+      checkData = await checkRes.json();
+      checkPassed = true;
+    } catch (err) {
+      console.warn("Backend security check server is offline. Falling back to direct Supabase Auth.");
+      checkPassed = false;
+    }
 
-      const checkData = await checkRes.json();
-
-      if (!checkData.success) {
-        if (checkData.error === 'CAPTCHA_REQUIRED') {
-          setCaptchaRequired(true);
-          setLoginError(checkData.message);
-          return;
-        } else if (checkData.error === 'IP_LOCKED' || checkData.error === 'EMAIL_LOCKED') {
-          setLoginError(checkData.message);
-          return;
-        } else {
-          setLoginError(checkData.message || 'Security check failed.');
-          return;
-        }
+    if (checkPassed && checkData && !checkData.success) {
+      setLoading(false);
+      if (checkData.error === 'CAPTCHA_REQUIRED') {
+        setCaptchaRequired(true);
+        setLoginError(checkData.message);
+        return;
+      } else if (checkData.error === 'IP_LOCKED' || checkData.error === 'EMAIL_LOCKED') {
+        setLoginError(checkData.message);
+        return;
+      } else {
+        setLoginError(checkData.message || 'Security check failed.');
+        return;
       }
+    }
 
+    try {
       // 2. Perform actual Supabase login
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
@@ -969,12 +978,18 @@ export default function App() {
       if (error) throw error;
 
       if (data?.session) {
-        // 3. Notify backend of successful login to reset counts
-        await fetch('http://localhost:5000/api/v1/auth/log-login-success', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: loginEmail })
-        });
+        // 3. Notify backend of successful login (non-blocking if server is offline)
+        if (checkPassed) {
+          try {
+            await fetch('http://localhost:5000/api/v1/auth/log-login-success', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: loginEmail })
+            });
+          } catch (e) {
+            console.warn("Could not log success to backend server.");
+          }
+        }
 
         // Reset frontend local states
         setCaptchaRequired(false);
@@ -990,31 +1005,39 @@ export default function App() {
       }
     } catch (err: any) {
       // 4. Notify backend of failed login attempt
-      try {
-        const failRes = await fetch('http://localhost:5000/api/v1/auth/log-login-failure', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: loginEmail })
-        });
-        const failData = await failRes.json();
+      let failedLoggedOnBackend = false;
+      if (checkPassed) {
+        try {
+          const failRes = await fetch('http://localhost:5000/api/v1/auth/log-login-failure', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: loginEmail })
+          });
+          const failData = await failRes.json();
+          failedLoggedOnBackend = true;
 
-        const newAttempts = failData.emailAttempts || (loginAttempts + 1);
-        setLoginAttempts(newAttempts);
-        localStorage.setItem('vms_login_attempts', String(newAttempts));
+          const newAttempts = failData.emailAttempts || (loginAttempts + 1);
+          setLoginAttempts(newAttempts);
+          localStorage.setItem('vms_login_attempts', String(newAttempts));
 
-        if (failData.ipAttempts >= 10) {
-          setLoginError('Too many unsuccessful login attempts from your network. You are locked out for 15 minutes.');
-        } else if (newAttempts >= 5) {
-          setLoginError('Too many unsuccessful login attempts. This account is locked for 15 minutes.');
-        } else {
-          setLoginError(err.message || 'Login failed. Verify credentials.');
+          if (failData.ipAttempts >= 10) {
+            setLoginError('Too many unsuccessful login attempts from your network. You are locked out for 15 minutes.');
+          } else if (newAttempts >= 5) {
+            setLoginError('Too many unsuccessful login attempts. This account is locked for 15 minutes.');
+          } else {
+            setLoginError(err.message || 'Login failed. Verify credentials.');
+          }
+
+          if (newAttempts >= 3 || failData.ipAttempts >= 3) {
+            setCaptchaRequired(true);
+          }
+        } catch (backendErr) {
+          console.warn("Could not log failure to backend server.");
         }
+      }
 
-        if (newAttempts >= 3 || failData.ipAttempts >= 3) {
-          setCaptchaRequired(true);
-        }
-      } catch (backendErr) {
-        // Fallback if backend server is unreachable
+      // If backend was offline or could not log failure, fall back to pure local browser lockout
+      if (!failedLoggedOnBackend) {
         const newAttempts = loginAttempts + 1;
         setLoginAttempts(newAttempts);
         localStorage.setItem('vms_login_attempts', String(newAttempts));
