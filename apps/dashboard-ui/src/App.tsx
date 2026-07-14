@@ -39,6 +39,8 @@ import {
 } from 'recharts';
 import { supabase } from './supabaseClient';
 
+const BACKEND_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 type View = 'queue' | 'employees' | 'blacklist' | 'analytics' | 'security_arrivals' | 'check_invite' | 'employee_scheduled' | 'employee_past' | 'employee_invite' | 'blacklist_review' | 'security_history' | 'employee_future';
 
 const getPhoneLimit = (prefix: string): number => {
@@ -938,7 +940,7 @@ export default function App() {
 
     // 1. Perform backend pre-login security check (Email block, CAPTCHA, IP rate limits)
     try {
-      const checkRes = await fetch('http://localhost:5000/api/v1/auth/pre-login-check', {
+      const checkRes = await fetch(`${BACKEND_API_URL}/api/v1/auth/pre-login-check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -981,7 +983,7 @@ export default function App() {
         // 3. Notify backend of successful login (non-blocking if server is offline)
         if (checkPassed) {
           try {
-            await fetch('http://localhost:5000/api/v1/auth/log-login-success', {
+            await fetch(`${BACKEND_API_URL}/api/v1/auth/log-login-success`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email: loginEmail })
@@ -1008,7 +1010,7 @@ export default function App() {
       let failedLoggedOnBackend = false;
       if (checkPassed) {
         try {
-          const failRes = await fetch('http://localhost:5000/api/v1/auth/log-login-failure', {
+          const failRes = await fetch(`${BACKEND_API_URL}/api/v1/auth/log-login-failure`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: loginEmail })
