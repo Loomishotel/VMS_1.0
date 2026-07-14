@@ -8,8 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev --filter=!api-server",
-    "build": "turbo run build --filter=!api-server"
+    "dev": "turbo run dev",
+    "build": "turbo run build"
   },
   "devDependencies": {
     "turbo": "^2.0.4"
