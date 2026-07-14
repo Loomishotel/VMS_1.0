@@ -482,6 +482,8 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [captchaRequired, setCaptchaRequired] = useState<boolean>(false);
+  const [captchaInput, setCaptchaInput] = useState<string>('');
 
   // Login failure limits and Lockout States
   const [loginAttempts, setLoginAttempts] = useState<number>(() => {
@@ -929,17 +931,36 @@ export default function App() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
-
-    // Prevent submission if currently locked out
-    if (lockoutUntil > Date.now()) {
-      const remaining = Math.max(0, Math.ceil((lockoutUntil - Date.now()) / 1000));
-      setLoginError(`Too many login attempts. Locked out for another ${formatTime(remaining)}.`);
-      return;
-    }
-
     setLoading(true);
 
     try {
+      // 1. Perform backend pre-login security check (Email block, CAPTCHA, IP rate limits)
+      const checkRes = await fetch('http://localhost:5000/api/v1/auth/pre-login-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loginEmail,
+          captchaAnswer: captchaInput
+        })
+      });
+
+      const checkData = await checkRes.json();
+
+      if (!checkData.success) {
+        if (checkData.error === 'CAPTCHA_REQUIRED') {
+          setCaptchaRequired(true);
+          setLoginError(checkData.message);
+          return;
+        } else if (checkData.error === 'IP_LOCKED' || checkData.error === 'EMAIL_LOCKED') {
+          setLoginError(checkData.message);
+          return;
+        } else {
+          setLoginError(checkData.message || 'Security check failed.');
+          return;
+        }
+      }
+
+      // 2. Perform actual Supabase login
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword
@@ -948,7 +969,16 @@ export default function App() {
       if (error) throw error;
 
       if (data?.session) {
-        // Reset attempts and lockout on success
+        // 3. Notify backend of successful login to reset counts
+        await fetch('http://localhost:5000/api/v1/auth/log-login-success', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: loginEmail })
+        });
+
+        // Reset frontend local states
+        setCaptchaRequired(false);
+        setCaptchaInput('');
         localStorage.removeItem('vms_login_attempts');
         localStorage.removeItem('vms_login_lockout_until');
         setLoginAttempts(0);
@@ -959,17 +989,44 @@ export default function App() {
         setAlertMessage({ type: 'success', text: `Welcome back!` });
       }
     } catch (err: any) {
-      const newAttempts = loginAttempts + 1;
-      setLoginAttempts(newAttempts);
-      localStorage.setItem('vms_login_attempts', String(newAttempts));
+      // 4. Notify backend of failed login attempt
+      try {
+        const failRes = await fetch('http://localhost:5000/api/v1/auth/log-login-failure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: loginEmail })
+        });
+        const failData = await failRes.json();
 
-      if (newAttempts >= 10) {
-        const lockTime = Date.now() + 15 * 60 * 1000;
-        setLockoutUntil(lockTime);
-        localStorage.setItem('vms_login_lockout_until', String(lockTime));
-        setLoginError('Too many unsuccessful login attempts. You are locked out for 15 minutes.');
-      } else {
-        setLoginError(err.message || 'Login failed. Verify credentials.');
+        const newAttempts = failData.emailAttempts || (loginAttempts + 1);
+        setLoginAttempts(newAttempts);
+        localStorage.setItem('vms_login_attempts', String(newAttempts));
+
+        if (failData.ipAttempts >= 10) {
+          setLoginError('Too many unsuccessful login attempts from your network. You are locked out for 15 minutes.');
+        } else if (newAttempts >= 5) {
+          setLoginError('Too many unsuccessful login attempts. This account is locked for 15 minutes.');
+        } else {
+          setLoginError(err.message || 'Login failed. Verify credentials.');
+        }
+
+        if (newAttempts >= 3 || failData.ipAttempts >= 3) {
+          setCaptchaRequired(true);
+        }
+      } catch (backendErr) {
+        // Fallback if backend server is unreachable
+        const newAttempts = loginAttempts + 1;
+        setLoginAttempts(newAttempts);
+        localStorage.setItem('vms_login_attempts', String(newAttempts));
+
+        if (newAttempts >= 10) {
+          const lockTime = Date.now() + 15 * 60 * 1000;
+          setLockoutUntil(lockTime);
+          localStorage.setItem('vms_login_lockout_until', String(lockTime));
+          setLoginError('Too many unsuccessful login attempts. You are locked out for 15 minutes.');
+        } else {
+          setLoginError(err.message || 'Login failed. Verify credentials.');
+        }
       }
     } finally {
       setLoading(false);
@@ -2543,6 +2600,26 @@ export default function App() {
                 disabled={lockoutUntil > Date.now()}
               />
             </div>
+
+            {captchaRequired && (
+              <div style={{ marginBottom: '24px', padding: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--card-border)', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🛡️ Security Check
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+                  Please prove you are human. What is <strong>4 + 7</strong>?
+                </div>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Enter answer"
+                  value={captchaInput}
+                  onChange={e => setCaptchaInput(e.target.value)}
+                  style={{ width: '100%', height: '38px', fontSize: '0.9rem' }}
+                  required
+                />
+              </div>
+            )}
 
             <Button type="submit" variant="primary" style={{ width: '100%', padding: '12px' }} isLoading={loading} disabled={lockoutUntil > Date.now()}>
               Sign In

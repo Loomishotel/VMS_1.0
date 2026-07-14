@@ -7,6 +7,137 @@ import { AuthenticatedRequest, authenticateToken } from '../middleware/auth';
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'vms_super_secret_key_12345';
 
+interface LoginTracker {
+  attempts: number;
+  lockoutUntil: number;
+}
+
+// In-memory rate limiting / security state tracker
+const emailTracker: Record<string, LoginTracker> = {};
+const ipTracker: Record<string, LoginTracker> = {};
+
+// Helper to get client IP
+const getClientIp = (req: any): string => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    return (typeof forwarded === 'string' ? forwarded : forwarded[0]).split(',')[0].trim();
+  }
+  return req.socket.remoteAddress || 'unknown';
+};
+
+// Route: POST /auth/pre-login-check
+router.post('/pre-login-check', async (req: any, res: Response) => {
+  const { email, captchaAnswer } = req.body;
+  const ip = getClientIp(req);
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_INPUT', message: 'Email is required' }
+    });
+  }
+
+  const now = Date.now();
+
+  // 1. IP Lockout Check (Highest priority / global)
+  const ipData = ipTracker[ip];
+  if (ipData && ipData.lockoutUntil > now) {
+    const remaining = Math.ceil((ipData.lockoutUntil - now) / 1000);
+    return res.json({
+      success: false,
+      error: 'IP_LOCKED',
+      message: `Too many failed attempts from your network. Locked out for ${remaining} seconds.`
+    });
+  }
+
+  // 2. Email Lockout Check
+  const emailData = emailTracker[email];
+  if (emailData && emailData.lockoutUntil > now) {
+    const remaining = Math.ceil((emailData.lockoutUntil - now) / 1000);
+    return res.json({
+      success: false,
+      error: 'EMAIL_LOCKED',
+      message: `This account is temporarily locked. Please try again in ${remaining} seconds.`
+    });
+  }
+
+  // 3. CAPTCHA Requirement Check
+  const emailAttempts = emailData ? emailData.attempts : 0;
+  const ipAttempts = ipData ? ipData.attempts : 0;
+
+  if (emailAttempts >= 3 || ipAttempts >= 3) {
+    // Math puzzle challenge: What is 4 + 7? -> '11'
+    if (captchaAnswer !== '11') {
+      return res.json({
+        success: false,
+        error: 'CAPTCHA_REQUIRED',
+        message: 'Security check: Please prove you are human.'
+      });
+    }
+  }
+
+  return res.json({
+    success: true,
+    message: 'All checks passed.'
+  });
+});
+
+// Route: POST /auth/log-login-failure
+router.post('/log-login-failure', async (req: any, res: Response) => {
+  const { email } = req.body;
+  const ip = getClientIp(req);
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_INPUT', message: 'Email is required' }
+    });
+  }
+
+  const now = Date.now();
+
+  // Update email tracking
+  if (!emailTracker[email]) {
+    emailTracker[email] = { attempts: 0, lockoutUntil: 0 };
+  }
+  emailTracker[email].attempts += 1;
+  if (emailTracker[email].attempts >= 5) {
+    emailTracker[email].lockoutUntil = now + 15 * 60 * 1000; // 15 mins
+  }
+
+  // Update IP tracking
+  if (!ipTracker[ip]) {
+    ipTracker[ip] = { attempts: 0, lockoutUntil: 0 };
+  }
+  ipTracker[ip].attempts += 1;
+  if (ipTracker[ip].attempts >= 10) {
+    ipTracker[ip].lockoutUntil = now + 15 * 60 * 1000; // 15 mins
+  }
+
+  return res.json({
+    success: true,
+    emailAttempts: emailTracker[email].attempts,
+    ipAttempts: ipTracker[ip].attempts
+  });
+});
+
+// Route: POST /auth/log-login-success
+router.post('/log-login-success', async (req: any, res: Response) => {
+  const { email } = req.body;
+  const ip = getClientIp(req);
+
+  if (email && emailTracker[email]) {
+    emailTracker[email] = { attempts: 0, lockoutUntil: 0 };
+  }
+  if (ipTracker[ip]) {
+    ipTracker[ip] = { attempts: 0, lockoutUntil: 0 };
+  }
+
+  return res.json({
+    success: true
+  });
+});
+
 // POST /auth/login
 router.post('/login', async (req: any, res: Response) => {
   const { email, password } = req.body;
