@@ -77,6 +77,7 @@ interface AvatarProps {
   style?: React.CSSProperties;
   ring?: boolean;
   online?: boolean;
+  visitorType?: string;
 }
 
 const avatarSizesMap = {
@@ -87,12 +88,57 @@ const avatarSizesMap = {
   xl: { width: '64px', height: '64px', fontSize: '18px' },
 };
 
-export function Avatar({ src, name, size = 'md', className, style, ring, online }: AvatarProps) {
+const getAvatarColors = (type?: string) => {
+  const t = type?.toLowerCase();
+  if (t === 'guest') {
+    return {
+      bg: 'var(--visitor-guest-bg)',
+      color: 'var(--visitor-guest-text)',
+      border: 'var(--visitor-guest-border)'
+    };
+  }
+  if (t === 'vendor') {
+    return {
+      bg: 'var(--visitor-vendor-bg)',
+      color: 'var(--visitor-vendor-text)',
+      border: 'var(--visitor-vendor-border)'
+    };
+  }
+  if (t === 'candidate') {
+    return {
+      bg: 'var(--visitor-candidate-bg)',
+      color: 'var(--visitor-candidate-text)',
+      border: 'var(--visitor-candidate-border)'
+    };
+  }
+  if (t === 'contractor') {
+    return {
+      bg: 'var(--visitor-contractor-bg)',
+      color: 'var(--visitor-contractor-text)',
+      border: 'var(--visitor-contractor-border)'
+    };
+  }
+  if (t === 'vip') {
+    return {
+      bg: 'var(--visitor-vip-bg)',
+      color: 'var(--visitor-vip-text)',
+      border: 'var(--visitor-vip-border)'
+    };
+  }
+  return {
+    bg: 'rgba(224, 90, 71, 0.08)',
+    color: 'var(--indigo-primary)',
+    border: 'rgba(224, 90, 71, 0.3)'
+  };
+};
+
+export function Avatar({ src, name, size = 'md', className, style, ring, online, visitorType }: AvatarProps) {
   const sizeStyle = avatarSizesMap[size] || avatarSizesMap.md;
   const initialsText = getInitials(name);
+  const colors = getAvatarColors(visitorType);
   
   const ringStyle = ring ? {
-    boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.5), 0 0 0 4px var(--bg-dark)',
+    boxShadow: '0 0 0 2px var(--indigo-primary), 0 0 0 4px var(--bg-dark)',
   } : {};
 
   return (
@@ -102,7 +148,7 @@ export function Avatar({ src, name, size = 'md', className, style, ring, online 
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
-      borderRadius: '50%',
+      borderRadius: '8px',
       ...sizeStyle,
       ...ringStyle,
       ...style
@@ -114,8 +160,9 @@ export function Avatar({ src, name, size = 'md', className, style, ring, online 
           style={{
             width: '100%',
             height: '100%',
-            borderRadius: '50%',
-            objectFit: 'cover'
+            borderRadius: '8px',
+            objectFit: 'cover',
+            border: `1px solid ${colors.border}`
           }}
         />
       ) : (
@@ -123,10 +170,11 @@ export function Avatar({ src, name, size = 'md', className, style, ring, online 
           style={{
             width: '100%',
             height: '100%',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #059669, #10b981)',
+            borderRadius: '8px',
+            background: colors.bg,
+            border: `1px solid ${colors.border}`,
             fontWeight: 600,
-            color: '#fff',
+            color: colors.color,
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center'
@@ -139,12 +187,12 @@ export function Avatar({ src, name, size = 'md', className, style, ring, online 
         <span
           style={{
             position: 'absolute',
-            right: '-1px',
-            bottom: '-1px',
+            right: '-2px',
+            bottom: '-2px',
             height: '10px',
             width: '10px',
             borderRadius: '50%',
-            border: '2px solid #09090b',
+            border: '2px solid var(--bg-dark)',
             background: online ? '#10b981' : '#94a3b8',
           }}
         />
@@ -183,8 +231,6 @@ export function Badge({ children, tone = 'slate', dot, icon, style }: BadgeProps
       borderRadius: '9999px',
       fontSize: '0.75rem',
       fontWeight: 600,
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px',
       background: colors.bg,
       color: colors.text,
       border: `1px solid ${colors.border}`,
@@ -205,6 +251,64 @@ export function Badge({ children, tone = 'slate', dot, icon, style }: BadgeProps
       )}
       {children}
     </span>
+  );
+}
+
+export function CredentialBadge({ label, value }: { label?: string; value: string }) {
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      padding: '4px 10px',
+      border: '1.5px dashed var(--color-indigo-accent)',
+      borderRadius: '6px',
+      fontFamily: 'monospace',
+      fontSize: '0.8rem',
+      fontWeight: 600,
+      color: 'var(--color-indigo-accent)',
+      background: 'rgba(99, 102, 241, 0.03)'
+    }}>
+      {label && <span style={{ opacity: 0.7 }}>{label}:</span>}
+      <span>{value}</span>
+    </span>
+  );
+}
+
+const statusConfig: Record<string, { label: string; icon: string; color: string; bg: string }> = {
+  expected: { label: 'Expected', icon: '📅', color: 'var(--status-expected-text)', bg: 'var(--status-expected)' },
+  preregistered: { label: 'Pre-Registered', icon: '📅', color: 'var(--status-expected-text)', bg: 'var(--status-expected)' },
+  checkedin: { label: 'Checked In', icon: '🟢', color: 'var(--status-checkedin-text)', bg: 'var(--status-checkedin)' },
+  inmeeting: { label: 'In Meeting', icon: '🟢', color: 'var(--status-checkedin-text)', bg: 'var(--status-checkedin)' },
+  active: { label: 'Active', icon: '🟢', color: 'var(--status-checkedin-text)', bg: 'var(--status-checkedin)' },
+  waiting: { label: 'Waiting', icon: '⏳', color: 'var(--status-waiting-text)', bg: 'var(--status-waiting)' },
+  checkedout: { label: 'Checked Out', icon: '⚪', color: 'var(--status-checkedout-text)', bg: 'var(--status-checkedout)' },
+  departed: { label: 'Checked Out', icon: '⚪', color: 'var(--status-checkedout-text)', bg: 'var(--status-checkedout)' },
+  denied: { label: 'Denied Entry', icon: '🚫', color: 'var(--status-denied-text)', bg: 'var(--status-denied)' },
+  cancelled: { label: 'Cancelled', icon: '❌', color: 'var(--status-denied-text)', bg: 'var(--status-denied)' },
+  cancellation_pending_reception: { label: 'Cancel Requested', icon: '⚠️', color: 'var(--status-denied-text)', bg: 'var(--status-denied)' },
+};
+
+export function StatusIndicator({ status }: { status: string }) {
+  const key = status?.toLowerCase() || '';
+  const config = statusConfig[key] || { label: status, icon: '•', color: 'var(--color-text-secondary)', bg: 'var(--card-bg-subtle)' };
+  return (
+    <div style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '6px 12px',
+      background: config.bg,
+      color: config.color,
+      borderLeft: `4px solid ${config.color}`,
+      borderRadius: '0 6px 6px 0',
+      fontSize: '0.8rem',
+      fontWeight: 600,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+    }}>
+      <span style={{ fontSize: '0.9rem', lineHeight: 1 }}>{config.icon}</span>
+      <span style={{ letterSpacing: '0.3px' }}>{config.label}</span>
+    </div>
   );
 }
 
@@ -270,10 +374,10 @@ export function Button({
     switch (variant) {
       case 'primary':
         return {
-          background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+          background: 'linear-gradient(180deg, #e05a47 0%, #c84e3c 100%)',
           color: '#fff',
           border: 'none',
-          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+          boxShadow: '0 4px 12px rgba(224, 90, 71, 0.2)',
         };
       case 'danger':
         return {
@@ -325,24 +429,6 @@ export function Button({
   );
 }
 
-const getStatusTone = (status: string) => {
-  const s = status.toLowerCase();
-  if (s === 'expected' || s === 'preregistered') return 'indigo';
-  if (s === 'checkedin' || s === 'inmeeting' || s === 'active') return 'success';
-  if (s === 'waiting') return 'warning';
-  if (s === 'checkedout' || s === 'departed') return 'slate';
-  if (s === 'denied' || s === 'cancelled' || s === 'cancellation_pending_reception') return 'danger';
-  return 'slate';
-};
-
-const getStatusLabel = (status: string) => {
-  if (!status) return '';
-  const s = status.toLowerCase();
-  if (s === 'denied') return 'Denied Entry';
-  if (s === 'checkedout' || s === 'departed') return 'Checked Out';
-  if (s === 'cancellation_pending_reception') return 'Cancel Requested';
-  return status;
-};
 
 export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('vms_token'));
@@ -2394,20 +2480,20 @@ export default function App() {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: 'var(--bg-gradient)' }}>
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '24px', padding: '40px', width: '90%', maxWidth: '440px', backdropFilter: 'var(--backdrop-blur)', boxShadow: 'var(--card-shadow)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#10b981', fontWeight: 700, fontSize: '1.5rem', marginBottom: '24px', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--indigo-primary)', fontWeight: 700, fontSize: '1.5rem', marginBottom: '24px', justifyContent: 'center' }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: 'linear-gradient(135deg, #059669, #10b981)',
+              background: 'linear-gradient(135deg, #c84e3c, #e05a47)',
               borderRadius: '12px',
               padding: '8px',
               color: '#fff',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+              boxShadow: '0 4px 12px rgba(224, 90, 71, 0.3)'
             }}>
               <Building size={20} />
             </div>
-            <span>VMS STAFF PORTAL</span>
+            <span>VMS Staff Portal</span>
           </div>
 
           <h2 style={{ textAlign: 'center', marginBottom: '8px', fontSize: '1.4rem' }}>Lobby Staff Sign In</h2>
@@ -2478,15 +2564,15 @@ export default function App() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'linear-gradient(135deg, #059669, #10b981)',
+            background: 'linear-gradient(135deg, #c84e3c, #e05a47)',
             borderRadius: '12px',
             padding: '8px',
             color: '#fff',
-            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+            boxShadow: '0 4px 12px rgba(224, 90, 71, 0.3)'
           }}>
             <Building size={20} />
           </div>
-          <span style={{ fontWeight: 700, fontSize: '1.1rem', letterSpacing: '0.5px' }}>VMS GATEWAY</span>
+          <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>VMS Gateway</span>
         </div>
 
         <ul className="sidebar-menu">
@@ -2763,22 +2849,25 @@ export default function App() {
                           <tr key={item.id}>
                             <td style={{ padding: '16px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <Avatar name={item.visitorName} size="md" />
+                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
                                 <div>
                                   <div style={{ fontWeight: 600 }}>{item.visitorName}</div>
-                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{item.visitorCompany || 'Independent'}</div>
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span>{item.visitorCompany || 'Independent'}</span>
+                                    <span style={{ opacity: 0.4 }}>•</span>
+                                    <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
+                                  </div>
                                 </div>
                               </div>
                             </td>
                             <td>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <Badge tone="slate">
-                                  {item.visitorType}
-                                </Badge>
-                                {item.additionalGuests > 0 && (
+                                {item.additionalGuests > 0 ? (
                                   <Badge tone="warning">
                                     +{item.additionalGuests} Guests
                                   </Badge>
+                                ) : (
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>No guests</span>
                                 )}
                               </div>
                             </td>
@@ -2791,9 +2880,7 @@ export default function App() {
                               {item.scheduledAt ? new Date(item.scheduledAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Today'}
                             </td>
                             <td>
-                              <Badge tone={getStatusTone(item.status)} dot={true}>
-                                {getStatusLabel(item.status)}
-                              </Badge>
+                              <StatusIndicator status={item.status} />
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -2913,21 +3000,25 @@ export default function App() {
                               <tr key={item.id} style={{ background: isBl ? 'rgba(239, 68, 68, 0.05)' : '' }}>
                                 <td>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <Avatar name={item.visitorName} size="md" />
+                                    <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
                                     <div>
                                       <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <span>{item.visitorName}</span>
                                         {isBl && <Badge tone="danger">⚠️ BLACKLISTED</Badge>}
                                         {isFlagged && <Badge tone="warning">⚠️ PENDING REVIEW</Badge>}
                                       </div>
-                                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{item.visitorEmail || 'No email provided'}</div>
+                                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span>{item.visitorEmail || 'No email provided'}</span>
+                                        <span style={{ opacity: 0.4 }}>•</span>
+                                        <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
+                                      </div>
                                     </div>
                                   </div>
                                 </td>
                                 <td>
-                                  <Badge tone="slate">
+                                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-primary)' }}>
                                     {item.visitorCompany || 'Independent'}
-                                  </Badge>
+                                  </span>
                                 </td>
                                 <td>{item.hostName || 'N/A'}</td>
                                 <td>
@@ -2939,9 +3030,7 @@ export default function App() {
                                   )}
                                 </td>
                                 <td>
-                                  <Badge tone={getStatusTone(item.status)} dot={true}>
-                                    {getStatusLabel(item.status)}
-                                  </Badge>
+                                  <StatusIndicator status={item.status} />
                                 </td>
                                 <td style={{ textAlign: 'right' }}>
                                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -3060,15 +3149,12 @@ export default function App() {
                             >
                               <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                                  <Avatar name={item.visitorName} size="md" />
+                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
                                   
                                   {/* Details */}
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                                       <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{item.visitorName}</span>
-                                      <Badge tone="indigo">
-                                        {item.visitorType}
-                                      </Badge>
                                       
                                       {item.additionalGuests > 0 && (
                                         <Badge tone="warning">
@@ -3077,9 +3163,11 @@ export default function App() {
                                       )}
                                     </div>
                                     
-                                    {/* Company Info */}
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)', fontWeight: 500 }}>
-                                      🏢 {item.visitorCompany || 'Independent'}
+                                    {/* Company Info & Visitor Type under name */}
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                                      <span>🏢 {item.visitorCompany || 'Independent'}</span>
+                                      <span style={{ opacity: 0.4 }}>•</span>
+                                      <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
                                     </div>
                                     
                                     {/* Location Info */}
@@ -3138,14 +3226,14 @@ export default function App() {
                                     background: 'var(--card-bg-subtle)',
                                     padding: '8px 12px',
                                     borderRadius: '8px',
-                                    borderLeft: '3px solid #6366f1'
+                                    borderLeft: '3px solid var(--indigo-primary)'
                                   }}>
                                     "{item.purpose}"
                                   </div>
                                   {item.badgeNumber && item.badgeNumber !== 'N/A' && (
-                                    <Badge tone="indigo" style={{ alignSelf: 'flex-start' }}>
-                                      💳 Badge: {item.badgeNumber}
-                                    </Badge>
+                                    <div style={{ alignSelf: 'flex-start' }}>
+                                      <CredentialBadge label="Badge" value={item.badgeNumber} />
+                                    </div>
                                   )}
                                 </div>
                               </td>
@@ -3194,9 +3282,7 @@ export default function App() {
                               </td>
 
                               <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
-                                <Badge tone={getStatusTone(item.status)} dot={true}>
-                                  {getStatusLabel(item.status)}
-                                </Badge>
+                                <StatusIndicator status={item.status} />
                               </td>
                             </tr>
                           ));
@@ -3259,15 +3345,12 @@ export default function App() {
                             >
                               <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                                  <Avatar name={item.visitorName} size="md" />
+                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
                                   
                                   {/* Details */}
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                                       <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{item.visitorName}</span>
-                                      <Badge tone="indigo">
-                                        {item.visitorType}
-                                      </Badge>
                                       
                                       {item.additionalGuests > 0 && (
                                         <Badge tone="warning">
@@ -3276,9 +3359,11 @@ export default function App() {
                                       )}
                                     </div>
                                     
-                                    {/* Company Info */}
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)', fontWeight: 500 }}>
-                                      🏢 {item.visitorCompany || 'Independent'}
+                                    {/* Company Info & Visitor Type under name */}
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                                      <span>🏢 {item.visitorCompany || 'Independent'}</span>
+                                      <span style={{ opacity: 0.4 }}>•</span>
+                                      <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
                                     </div>
  
                                     {/* Location Info */}
@@ -3332,9 +3417,7 @@ export default function App() {
                               </td>
 
                               <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
-                                <Badge tone={getStatusTone(item.status)} dot={true}>
-                                  {getStatusLabel(item.status)}
-                                </Badge>
+                                <StatusIndicator status={item.status} />
                               </td>
 
                               <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
@@ -3458,15 +3541,12 @@ export default function App() {
                             >
                               <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                                  <Avatar name={item.visitorName} size="md" />
+                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
                                   
                                   {/* Details */}
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                                       <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{item.visitorName}</span>
-                                      <Badge tone="indigo">
-                                        {item.visitorType}
-                                      </Badge>
                                       
                                       {item.additionalGuests > 0 && (
                                         <Badge tone="warning">
@@ -3475,9 +3555,11 @@ export default function App() {
                                       )}
                                     </div>
                                     
-                                    {/* Company Info */}
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-primary)', fontWeight: 500 }}>
-                                      🏢 {item.visitorCompany || 'Independent'}
+                                    {/* Company Info & Visitor Type under name */}
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                                      <span>🏢 {item.visitorCompany || 'Independent'}</span>
+                                      <span style={{ opacity: 0.4 }}>•</span>
+                                      <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
                                     </div>
 
                                     {/* Location Info */}
@@ -3564,9 +3646,7 @@ export default function App() {
                               </td>
 
                               <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
-                                <Badge tone={getStatusTone(item.status)} dot={true}>
-                                  {getStatusLabel(item.status)}
-                                </Badge>
+                                <StatusIndicator status={item.status} />
                               </td>
                             </tr>
                           ))
@@ -3598,12 +3678,12 @@ export default function App() {
                   <div className="table-header" style={{ borderBottom: '1px solid var(--card-border)' }}>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Calendar size={20} style={{ color: '#10b981' }} />
+                        <Calendar size={20} style={{ color: 'var(--indigo-primary)' }} />
                         Upcoming Scheduled Visitors
                       </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Future visits where you are the host. Read-only — add a remark to help security prepare.</div>
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600, background: 'rgba(99,102,241,0.08)', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(99,102,241,0.2)' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--indigo-primary)', fontWeight: 600, background: 'rgba(200, 78, 60, 0.08)', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(200, 78, 60, 0.2)' }}>
                       {futureVisits.length} Upcoming Visit{futureVisits.length !== 1 ? 's' : ''}
                     </div>
                   </div>
@@ -3642,15 +3722,21 @@ export default function App() {
                             >
                               {/* LEFT: Visitor Info */}
                               <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flex: 1 }}>
-                                <Avatar name={item.visitorName} size="lg" />
+                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="lg" />
                                 <div style={{ flex: 1 }}>
                                   <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text-primary)', marginBottom: '4px' }}>
                                     {item.visitorName}
-                                    <Badge tone="primary" style={{ marginLeft: '8px' }}>{item.visitorType}</Badge>
                                   </div>
-                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
-                                    🏢 {item.visitorCompany || 'Independent'}
-                                    {item.visitorEmail && <span style={{ marginLeft: '12px' }}>✉ {item.visitorEmail}</span>}
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    <span>🏢 {item.visitorCompany || 'Independent'}</span>
+                                    <span style={{ opacity: 0.4 }}>•</span>
+                                    <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
+                                    {item.visitorEmail && (
+                                      <>
+                                        <span style={{ opacity: 0.4 }}>•</span>
+                                        <span>✉ {item.visitorEmail}</span>
+                                      </>
+                                    )}
                                   </div>
                                   <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                                     <span>📋 Purpose: <strong style={{ color: darkMode ? 'var(--color-purple-accent)' : '#1e1b4b' }}>{item.purpose}</strong></span>
@@ -3695,7 +3781,7 @@ export default function App() {
                                 </div>
 
                                 {/* Status badge */}
-                                <Badge tone={getStatusTone(item.status)} dot={true}>{getStatusLabel(item.status)}</Badge>
+                                <StatusIndicator status={item.status} />
 
                                 {/* Remark button */}
                                 <button
@@ -3755,8 +3841,8 @@ export default function App() {
                 <form onSubmit={handlePreRegister}>
                   {/* SECTION 1: VISITOR INFO */}
                   <div style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: '#10b981', display: 'flex' }}><User size={18} /></span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Visitor Credentials</span>
+                    <span style={{ color: 'var(--indigo-primary)', display: 'flex' }}><User size={18} /></span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Visitor credentials</span>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
@@ -3892,8 +3978,8 @@ export default function App() {
 
                   {/* SECTION 2: VISIT DETAILS */}
                   <div style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '8px', marginBottom: '20px', marginTop: '32px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: '#10b981', display: 'flex' }}><History size={18} /></span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Visit Details</span>
+                    <span style={{ color: 'var(--indigo-primary)', display: 'flex' }}><History size={18} /></span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Visit details</span>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
@@ -3988,7 +4074,7 @@ export default function App() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0', borderBottom: '1px solid var(--card-border)' }}>
                         {/* Flagged By */}
                         <div style={{ padding: '16px 24px', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-                          <div style={{ fontSize: '0.68rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>🛡 Flagged By</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '6px' }}>🛡 Flagged by</div>
                           <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{v.flaggedByName}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '3px' }}>
                             {v.flaggedAt ? new Date(v.flaggedAt).toLocaleString() : 'Date unknown'}
@@ -3997,7 +4083,7 @@ export default function App() {
 
                         {/* Visit History */}
                         <div style={{ padding: '16px 24px', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-                          <div style={{ fontSize: '0.68rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>📋 Visit History</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '6px' }}>📋 Visit history</div>
                           <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{v.visitHistory.length} recorded visit{v.visitHistory.length !== 1 ? 's' : ''}</div>
                           {v.visitHistory.length > 0 && (
                             <div style={{ fontSize: '0.73rem', color: 'var(--color-text-secondary)', marginTop: '3px' }}>
@@ -4008,14 +4094,14 @@ export default function App() {
 
                         {/* Visitor Type */}
                         <div style={{ padding: '16px 24px' }}>
-                          <div style={{ fontSize: '0.68rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>🏷 Visitor Type</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '6px' }}>🏷 Visitor type</div>
                           <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{v.visitorType || 'Guest'}</div>
                         </div>
                       </div>
 
                       {/* Flag Reason */}
                       <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--card-border)' }}>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>⚠️ Security Flag Reason</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '8px' }}>⚠️ Security flag reason</div>
                         <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '8px', padding: '12px 16px', color: 'var(--color-danger)', fontSize: '0.88rem', lineHeight: '1.5', fontStyle: 'italic' }}>
                           "{v.flagReason}"
                         </div>
@@ -4188,12 +4274,17 @@ export default function App() {
                       ) : (
                         filteredQueue.map((item) => (
                           <tr key={item.id}>
-                            <td>
-                              <div style={{ fontWeight: 600 }}>{item.visitorName}</div>
-                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{item.visitorCompany || 'Independent'}</div>
+                            <td style={{ padding: '16px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                                <div>
+                                  <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{item.visitorName}</div>
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>🏢 {item.visitorCompany || 'Independent'}</div>
+                                </div>
+                              </div>
                             </td>
                             <td>
-                              <span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: '4px' }}>
+                              <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600, fontSize: '0.85rem' }}>
                                 {item.visitorType}
                               </span>
                             </td>
@@ -4208,9 +4299,7 @@ export default function App() {
                               {item.checkedInAt ? new Date(item.checkedInAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Pending'}
                             </td>
                             <td>
-                              <span className={`badge badge-${item.status.toLowerCase()}`}>
-                                {getStatusLabel(item.status)}
-                              </span>
+                              <StatusIndicator status={item.status} />
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               {item.isBlacklisted ? (
@@ -4526,8 +4615,8 @@ export default function App() {
             <form onSubmit={handlePreRegister}>
               {/* SECTION 1: VISITOR INFO */}
               <div style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: '#10b981', display: 'flex' }}><User size={18} /></span>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Visitor Credentials</span>
+                <span style={{ color: 'var(--indigo-primary)', display: 'flex' }}><User size={18} /></span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Visitor credentials</span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
@@ -4663,8 +4752,8 @@ export default function App() {
 
               {/* SECTION 2: VISIT DETAILS */}
               <div style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '8px', marginBottom: '20px', marginTop: '32px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: '#10b981', display: 'flex' }}><History size={18} /></span>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Visit Details</span>
+                <span style={{ color: 'var(--indigo-primary)', display: 'flex' }}><History size={18} /></span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Visit details</span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
@@ -4711,7 +4800,7 @@ export default function App() {
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid var(--card-border)', paddingTop: '24px' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowPreRegModal(false)} style={{ padding: '12px 32px', fontSize: '0.9rem' }}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ padding: '12px 36px', fontSize: '0.9rem', background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                <button type="submit" className="btn btn-primary" style={{ padding: '12px 36px', fontSize: '0.9rem', background: 'linear-gradient(135deg, var(--indigo-primary), var(--indigo-secondary))', border: 'none', color: '#fff' }}>
                   {user?.role === 'Security' ? 'Register Walk-in' : 'Pre-Register Guest'}
                 </button>
               </div>
@@ -4783,7 +4872,7 @@ export default function App() {
                   </button>
                 )}
                 {isCameraActive && (
-                  <button type="button" className="btn btn-success" onClick={capturePhoto} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', color: '#fff' }}>
+                  <button type="button" className="btn btn-success" onClick={capturePhoto} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, var(--indigo-primary), var(--indigo-secondary))', border: 'none', color: '#fff' }}>
                     <Camera size={16} /> Capture Photo
                   </button>
                 )}
@@ -4941,7 +5030,7 @@ export default function App() {
                   style={{ 
                     padding: '10px 24px', 
                     fontSize: '0.9rem', 
-                    background: capturedPhoto ? 'linear-gradient(135deg, #10b981, #059669)' : 'var(--card-border)', 
+                    background: capturedPhoto ? 'linear-gradient(135deg, var(--indigo-primary), var(--indigo-secondary))' : 'var(--card-border)', 
                     cursor: capturedPhoto ? 'pointer' : 'not-allowed',
                     opacity: capturedPhoto ? 1 : 0.6
                   }}
@@ -5419,12 +5508,12 @@ export default function App() {
                   { label: 'Phone', value: selectedInviteDetails.visitorPhone || '—' },
                 ].map(row => (
                   <div key={row.label} style={{ background: 'var(--card-bg-subtle)', borderRadius: '10px', padding: '14px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '5px' }}>{row.label}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '5px' }}>{row.label}</div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 600, color: (row as any).color || 'var(--color-text-primary)' }}>{row.value}</div>
                   </div>
                 ))}
                 <div style={{ background: 'var(--card-bg-subtle)', borderRadius: '10px', padding: '14px' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '5px' }}>Scheduled At</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '5px' }}>Scheduled at</div>
                   <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-warning)' }}>{new Date(selectedInviteDetails.scheduledAt).toLocaleString()}</div>
                   {new Date(selectedInviteDetails.scheduledAt).toDateString() === new Date().toDateString()
                     ? <div style={{ fontSize: '0.7rem', color: 'var(--color-success)', marginTop: '4px', fontWeight: 600 }}>• Today's Visit</div>
@@ -5432,8 +5521,8 @@ export default function App() {
                   }
                 </div>
                 <div style={{ background: 'var(--card-bg-subtle)', borderRadius: '10px', padding: '14px' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '5px' }}>Status</div>
-                  <Badge tone={getStatusTone(selectedInviteDetails.status)} dot={true}>{getStatusLabel(selectedInviteDetails.status)}</Badge>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '5px' }}>Status</div>
+                  <StatusIndicator status={selectedInviteDetails.status} />
                 </div>
               </div>
             )}
@@ -5449,7 +5538,7 @@ export default function App() {
                 </div>
                 {selectedInviteDetails.hostDept && (
                   <div style={{ background: 'var(--card-bg-subtle)', borderRadius: '10px', padding: '14px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '5px' }}>Department</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '5px' }}>Department</div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>{selectedInviteDetails.hostDept}</div>
                   </div>
                 )}
@@ -5462,7 +5551,7 @@ export default function App() {
                   <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '12px', padding: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                       <MessageSquare size={16} style={{ color: 'var(--color-indigo-accent)' }} />
-                      <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-indigo-accent)' }}>Host's Remark for Security</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-indigo-accent)' }}>Host's remark for security</span>
                     </div>
                     <div style={{ fontSize: '0.9rem', color: 'var(--color-purple-accent)', lineHeight: '1.65', whiteSpace: 'pre-wrap' }}>
                       {selectedInviteDetails.remarks}
