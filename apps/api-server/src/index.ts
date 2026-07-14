@@ -31,6 +31,14 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health Check route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'VMS API Server is online', 
+    version: '1.0.0', 
+    timestamp: new Date() 
+  });
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date() });
 });
