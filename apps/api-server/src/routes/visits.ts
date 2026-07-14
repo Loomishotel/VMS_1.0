@@ -33,7 +33,7 @@ router.get('/queue', authenticateToken as any, async (req: AuthenticatedRequest,
     });
 
     // Format DTO
-    const data = visits.map((v) => ({
+    const data = visits.map((v: any) => ({
       id: v.id,
       visitorId: v.visitorId,
       visitorName: v.visitor.fullName,
@@ -79,7 +79,7 @@ router.post('/pre-register', authenticateToken as any, async (req: Authenticated
   }
 
   try {
-    const invitation = await prisma.$transaction(async (tx) => {
+    const invitation = await prisma.$transaction(async (tx: any) => {
       // 1. Check/Create Visitor
       let visitor = await tx.visitor.findFirst({
         where: email ? { email } : { fullName: { equals: fullName, mode: 'insensitive' } }
@@ -207,7 +207,7 @@ router.post('/checkin', async (req: any, res: Response) => {
       }
 
       // Transition Visit to CheckedIn
-      const updatedVisit = await prisma.$transaction(async (tx) => {
+      const updatedVisit = await prisma.$transaction(async (tx: any) => {
         const visit = await tx.visit.update({
           where: { id: activeVisit.id },
           data: {
@@ -278,7 +278,7 @@ router.post('/checkin', async (req: any, res: Response) => {
         });
       }
 
-      const checkInResult = await prisma.$transaction(async (tx) => {
+      const checkInResult = await prisma.$transaction(async (tx: any) => {
         // 2. Fetch/Create Visitor
         let visitor = await tx.visitor.findFirst({
           where: email ? { email } : { fullName: { equals: fullName, mode: 'insensitive' } }
@@ -428,7 +428,7 @@ router.put('/:id/status', authenticateToken as any, requirePermission('visit.che
       return res.status(400).json({ success: false, error: { code: 'VISIT_DENIED', message: 'This visit has been denied entry and cannot be checked in' } });
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: any) => {
       const dbVisit = await tx.visit.update({
         where: { id },
         data: {

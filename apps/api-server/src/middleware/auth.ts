@@ -52,7 +52,7 @@ export async function authenticateToken(req: AuthenticatedRequest, res: Response
       });
     }
 
-    const permissionCodes = user.role.permissions.map(rp => rp.permission.code);
+    const permissionCodes = user.role.permissions.map((rp: any) => rp.permission.code);
 
     req.user = {
       id: user.id,

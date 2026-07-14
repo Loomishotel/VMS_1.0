@@ -65,7 +65,7 @@ router.post('/blacklist', authenticateToken as any, requirePermission('blacklist
   }
 
   try {
-    const blacklistRecord = await prisma.$transaction(async (tx) => {
+    const blacklistRecord = await prisma.$transaction(async (tx: any) => {
       // 1. Create blacklist row
       const record = await tx.blacklist.create({
         data: {
@@ -128,7 +128,7 @@ router.delete('/blacklist/:id', authenticateToken as any, requirePermission('bla
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Blacklist record not found' } });
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       await tx.blacklist.delete({ where: { id } });
 
       // Unflag the visitor if linked

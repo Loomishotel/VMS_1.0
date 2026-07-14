@@ -24,7 +24,7 @@ router.get('/', async (req: any, res: Response) => {
       orderBy: { fullName: 'asc' }
     });
 
-    const data = employees.map(e => ({
+    const data = employees.map((e: any) => ({
       id: e.id,
       fullName: e.fullName,
       email: e.email,

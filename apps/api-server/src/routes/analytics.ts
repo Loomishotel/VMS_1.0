@@ -50,7 +50,7 @@ router.get('/summary', authenticateToken as any, async (req: AuthenticatedReques
 
     let avgVisitMinutes = 45; // Default fallback
     if (completedVisits.length > 0) {
-      const totalMinutes = completedVisits.reduce((acc, visit) => {
+      const totalMinutes = completedVisits.reduce((acc: number, visit: any) => {
         const diffMs = visit.checkedOutAt!.getTime() - visit.checkedInAt!.getTime();
         return acc + Math.floor(diffMs / 60000);
       }, 0);
@@ -68,7 +68,7 @@ router.get('/summary', authenticateToken as any, async (req: AuthenticatedReques
     });
 
     const deptCounts: { [key: string]: number } = {};
-    deptVisits.forEach(v => {
+    deptVisits.forEach((v: any) => {
       const deptName = v.host.department.name;
       deptCounts[deptName] = (deptCounts[deptName] || 0) + 1;
     });
@@ -139,7 +139,7 @@ router.get('/evacuation', authenticateToken as any, requirePermission('visitor.v
       orderBy: { checkedInAt: 'asc' }
     });
 
-    const data = activeVisits.map(v => ({
+    const data = activeVisits.map((v: any) => ({
       visitId: v.id,
       visitorName: v.visitor.fullName,
       visitorType: v.visitor.visitorType,
