@@ -99,10 +99,14 @@ async function startNotificationDispatcher() {
 }
 
 // Start Server
-app.listen(PORT, () => {
-  console.log(`==================================================`);
-  console.log(`  VMS API Server running on http://localhost:${PORT}`);
-  console.log(`  Mode: Development`);
-  console.log(`==================================================`);
-  startNotificationDispatcher();
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`==================================================`);
+    console.log(`  VMS API Server running on http://localhost:${PORT}`);
+    console.log(`  Mode: Development`);
+    console.log(`==================================================`);
+    startNotificationDispatcher();
+  });
+}
+
+export default app;
