@@ -86,9 +86,11 @@ router.post('/pre-register', authenticateToken as any, async (req: Authenticated
       });
 
       if (!visitor) {
-        // Check if name matches blacklist
         const blacklisted = await tx.blacklist.findFirst({
-          where: { fullName: { equals: fullName, mode: 'insensitive' } }
+          where: {
+            fullName: { equals: fullName, mode: 'insensitive' },
+            addedByUser: { branchId: req.user!.branchId }
+          }
         });
 
         visitor = await tx.visitor.create({
@@ -101,6 +103,20 @@ router.post('/pre-register', authenticateToken as any, async (req: Authenticated
             isBlacklisted: !!blacklisted
           }
         });
+      }
+
+      // 1b. Check if visitor is blacklisted at this branch
+      const isBl = await tx.blacklist.findFirst({
+        where: {
+          OR: [
+            { visitorId: visitor.id },
+            { fullName: { equals: visitor.fullName, mode: 'insensitive' } }
+          ],
+          addedByUser: { branchId: req.user!.branchId }
+        }
+      });
+      if (isBl) {
+        throw new Error('Visitor is blacklisted at this branch and cannot be pre-registered');
       }
 
       // 2. Generate unique QR token
@@ -154,6 +170,12 @@ router.post('/pre-register', authenticateToken as any, async (req: Authenticated
       }
     });
   } catch (error: any) {
+    if (error.message && error.message.includes('Visitor is blacklisted')) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'VISITOR_BLACKLISTED', message: error.message }
+      });
+    }
     return res.status(500).json({
       success: false,
       error: { code: 'SERVER_ERROR', message: error.message }
@@ -181,7 +203,14 @@ router.post('/checkin', async (req: any, res: Response) => {
         });
       }
 
-      if (invitation.visitor.isBlacklisted) {
+      const isBlacklistedAtBranch = await prisma.blacklist.findFirst({
+        where: {
+          visitorId: invitation.visitorId,
+          addedByUser: { branchId: targetBranchId }
+        }
+      });
+
+      if (isBlacklistedAtBranch) {
         return res.status(403).json({
           success: false,
           error: { code: 'VISITOR_BLACKLISTED', message: 'Visitor is currently flagged on the blacklist. Entry Denied.' }
@@ -268,7 +297,10 @@ router.post('/checkin', async (req: any, res: Response) => {
 
       // 1. Blacklist check
       const blacklisted = await prisma.blacklist.findFirst({
-        where: { fullName: { equals: fullName, mode: 'insensitive' } }
+        where: {
+          fullName: { equals: fullName, mode: 'insensitive' },
+          addedByUser: { branchId: targetBranchId }
+        }
       });
 
       if (blacklisted) {
@@ -428,7 +460,17 @@ router.put('/:id/status', authenticateToken as any, requirePermission('visit.che
       return res.status(400).json({ success: false, error: { code: 'VISIT_DENIED', message: 'This visit has been denied entry and cannot be checked in' } });
     }
 
-    if (visit.visitor.isBlacklisted && (status === 'CheckedIn' || status === 'Waiting')) {
+    const isBlacklistedAtBranch = await prisma.blacklist.findFirst({
+      where: {
+        OR: [
+          { visitorId: visit.visitorId },
+          { fullName: { equals: visit.visitor.fullName, mode: 'insensitive' } }
+        ],
+        addedByUser: { branchId: visit.branchId }
+      }
+    });
+
+    if (isBlacklistedAtBranch && (status === 'CheckedIn' || status === 'Waiting')) {
       return res.status(403).json({ success: false, error: { code: 'VISITOR_BLACKLISTED', message: 'Safety check failed: This visitor is currently flagged on the blacklist.' } });
     }
 

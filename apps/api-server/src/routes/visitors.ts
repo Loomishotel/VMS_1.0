@@ -20,9 +20,28 @@ router.get('/', authenticateToken as any, requirePermission('visitor.view') as a
       orderBy: { fullName: 'asc' }
     });
 
+    const branchBlacklists = await prisma.blacklist.findMany({
+      where: {
+        addedByUser: { branchId: req.user!.branchId }
+      },
+      select: { visitorId: true, fullName: true }
+    });
+
+    const branchBlacklistedVisitorIds = new Set(branchBlacklists.map((b: any) => b.visitorId).filter(Boolean));
+    const branchBlacklistedNames = new Set(branchBlacklists.map((b: any) => b.fullName.toLowerCase().trim()));
+
+    const data = visitors.map((v: any) => {
+      const hasIdMatch = v.id && branchBlacklistedVisitorIds.has(v.id);
+      const hasNameMatch = v.fullName && branchBlacklistedNames.has(v.fullName.toLowerCase().trim());
+      return {
+        ...v,
+        isBlacklisted: hasIdMatch || hasNameMatch
+      };
+    });
+
     return res.json({
       success: true,
-      data: visitors
+      data
     });
   } catch (error: any) {
     return res.status(500).json({
@@ -36,6 +55,11 @@ router.get('/', authenticateToken as any, requirePermission('visitor.view') as a
 router.get('/blacklist', authenticateToken as any, requirePermission('blacklist.manage') as any, async (req: any, res: Response) => {
   try {
     const list = await prisma.blacklist.findMany({
+      where: {
+        addedByUser: {
+          branchId: req.user!.branchId
+        }
+      },
       include: {
         addedByUser: { select: { fullName: true } }
       },
@@ -123,25 +147,42 @@ router.delete('/blacklist/:id', authenticateToken as any, requirePermission('bla
   const { id } = req.params;
 
   try {
-    const record = await prisma.blacklist.findUnique({ where: { id } });
+    const record = await prisma.blacklist.findUnique({
+      where: { id },
+      include: { addedByUser: true }
+    });
     if (!record) {
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Blacklist record not found' } });
+    }
+
+    if (record.addedByUser.branchId !== req.user!.branchId) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage this blacklist record' } });
     }
 
     await prisma.$transaction(async (tx: any) => {
       await tx.blacklist.delete({ where: { id } });
 
-      // Unflag the visitor if linked
+      // Unflag the visitor if no other blacklist record remains
       if (record.visitorId) {
-        await tx.visitor.update({
-          where: { id: record.visitorId },
-          data: { isBlacklisted: false }
+        const remaining = await tx.blacklist.findFirst({
+          where: { visitorId: record.visitorId }
         });
+        if (!remaining) {
+          await tx.visitor.update({
+            where: { id: record.visitorId },
+            data: { isBlacklisted: false }
+          });
+        }
       } else {
-        await tx.visitor.updateMany({
-          where: { fullName: { equals: record.fullName, mode: 'insensitive' } },
-          data: { isBlacklisted: false }
+        const remaining = await tx.blacklist.findFirst({
+          where: { fullName: { equals: record.fullName, mode: 'insensitive' } }
         });
+        if (!remaining) {
+          await tx.visitor.updateMany({
+            where: { fullName: { equals: record.fullName, mode: 'insensitive' } },
+            data: { isBlacklisted: false }
+          });
+        }
       }
     });
 
@@ -211,9 +252,12 @@ router.post('/', authenticateToken as any, requirePermission('visitor.create') a
   }
 
   try {
-    // Check if name is blacklisted
+    // Check if name is blacklisted at this branch
     const blacklisted = await prisma.blacklist.findFirst({
-      where: { fullName: { equals: fullName, mode: 'insensitive' } }
+      where: {
+        fullName: { equals: fullName, mode: 'insensitive' },
+        addedByUser: { branchId: req.user!.branchId }
+      }
     });
 
     const visitor = await prisma.visitor.create({

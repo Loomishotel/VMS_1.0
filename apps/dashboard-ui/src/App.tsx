@@ -1292,6 +1292,21 @@ export default function App() {
   const fetchBlacklistReview = async () => {
     setLoading(true);
     try {
+      // Get branch users
+      const { data: branchUsers } = await supabase
+        .from('User')
+        .select('id')
+        .eq('branchId', user.branchId);
+      const branchUserIds = (branchUsers || []).map((u: any) => u.id);
+
+      // Get branch blacklist
+      const { data: branchBlacklist } = await supabase
+        .from('Blacklist')
+        .select('visitorId, fullName')
+        .in('addedByUserId', branchUserIds);
+      const blacklistedVisitorIds = new Set((branchBlacklist || []).map((b: any) => b.visitorId).filter(Boolean));
+      const blacklistedNames = new Set((branchBlacklist || []).map((b: any) => b.fullName?.toLowerCase().trim()).filter(Boolean));
+
       const { data, error } = await supabase
         .from('Visitor')
         .select(`
@@ -1318,7 +1333,13 @@ export default function App() {
         
         const userMap = new Map((usersData || []).map((u: any) => [u.id, u.fullName]));
 
-        const parsed = await Promise.all(data.map(async (visitor: any) => {
+        const filteredVisitors = data.filter((v: any) => {
+          const isFlaggedHere = v.blacklistFlag === 'pending_review' && branchUserIds.includes(v.flaggedByUserId);
+          const isBlacklistedHere = (v.id && blacklistedVisitorIds.has(v.id)) || (v.fullName && blacklistedNames.has(v.fullName.toLowerCase().trim()));
+          return isFlaggedHere || isBlacklistedHere;
+        });
+
+        const parsed = await Promise.all(filteredVisitors.map(async (visitor: any) => {
           const { data: visitsData } = await supabase
             .from('Visit')
             .select(`
@@ -1333,8 +1354,12 @@ export default function App() {
             .eq('visitorId', visitor.id)
             .eq('branchId', user.branchId); // Filter visitor history to current branch
 
+          const isBlacklistedHere = (visitor.id && blacklistedVisitorIds.has(visitor.id)) || (visitor.fullName && blacklistedNames.has(visitor.fullName.toLowerCase().trim()));
+
           return {
             ...visitor,
+            isBlacklisted: isBlacklistedHere,
+            blacklistFlag: branchUserIds.includes(visitor.flaggedByUserId) ? visitor.blacklistFlag : 'none',
             flaggedByName: userMap.get(visitor.flaggedByUserId) || 'Security Staff',
             visitHistory: visitsData || []
           };
@@ -1414,25 +1439,37 @@ export default function App() {
   };
   const handleRemoveFromBlacklist = async (visitorId: string) => {
     try {
+      // Get branch users
+      const { data: branchUsers } = await supabase
+        .from('User')
+        .select('id')
+        .eq('branchId', user.branchId);
+      const branchUserIds = (branchUsers || []).map((u: any) => u.id);
+
+      // Clean up the corresponding Blacklist table entry for this branch
+      const { error: blDeleteErr } = await supabase
+        .from('Blacklist')
+        .delete()
+        .eq('visitorId', visitorId)
+        .in('addedByUserId', branchUserIds);
+
+      if (blDeleteErr) throw blDeleteErr;
+
+      // Check if there are other blacklist entries remaining for this visitor
+      const { data: remainingBl } = await supabase
+        .from('Blacklist')
+        .select('id')
+        .eq('visitorId', visitorId);
+
       const { error } = await supabase
         .from('Visitor')
         .update({
-          isBlacklisted: false,
+          isBlacklisted: remainingBl && remainingBl.length > 0,
           blacklistFlag: 'none'
         })
         .eq('id', visitorId);
 
       if (error) throw error;
-
-      // Clean up the corresponding Blacklist table entry
-      const { error: blDeleteErr } = await supabase
-        .from('Blacklist')
-        .delete()
-        .eq('visitorId', visitorId);
-
-      if (blDeleteErr) {
-        console.warn("Failed to delete entry from Blacklist table:", blDeleteErr);
-      }
 
       await supabase.from('AuditLog').insert({
         actorUserId: user.id,
@@ -1594,6 +1631,21 @@ export default function App() {
   const fetchQueue = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
+      // Get branch users
+      const { data: branchUsers } = await supabase
+        .from('User')
+        .select('id')
+        .eq('branchId', user.branchId);
+      const branchUserIds = (branchUsers || []).map((u: any) => u.id);
+
+      // Get branch blacklist
+      const { data: branchBlacklist } = await supabase
+        .from('Blacklist')
+        .select('visitorId, fullName')
+        .in('addedByUserId', branchUserIds);
+      const blacklistedVisitorIds = new Set((branchBlacklist || []).map((b: any) => b.visitorId).filter(Boolean));
+      const blacklistedNames = new Set((branchBlacklist || []).map((b: any) => b.fullName?.toLowerCase().trim()).filter(Boolean));
+
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date();
@@ -1622,7 +1674,8 @@ export default function App() {
             visitorType,
             photoUrl,
             isBlacklisted,
-            blacklistFlag
+            blacklistFlag,
+            flaggedByUserId
           ),
           Employee (
             id,
@@ -1639,31 +1692,36 @@ export default function App() {
 
       if (data) {
         const mapped = data
-          .map((v: any) => ({
-            id: v.id,
-            visitorId: v.visitorId,
-            visitorName: v.Visitor?.fullName || 'Visitor',
-            visitorEmail: v.Visitor?.email || '',
-            visitorPhone: v.Visitor?.phone || '',
-            visitorCompany: v.Visitor?.company || '',
-            visitorType: v.Visitor?.visitorType || 'Guest',
-            hostId: v.Employee?.id || '',
-            hostName: v.Employee?.fullName || 'Host',
-            hostEmail: v.Employee?.email || '',
-            hostPhone: v.Employee?.phone || '',
-            purpose: v.purpose,
-            status: v.status,
-            scheduledAt: v.scheduledAt,
-            createdAt: v.createdAt,
-            checkedInAt: v.checkedInAt,
-            checkedOutAt: v.checkedOutAt,
-            deniedReason: v.deniedReason || '',
-            zoneAccess: v.zoneAccess || '',
-            photoUrl: v.Visitor?.photoUrl || '',
-            additionalGuests: v.additionalGuests || 0,
-            isBlacklisted: v.Visitor?.isBlacklisted || false,
-            blacklistFlag: v.Visitor?.blacklistFlag || ''
-          }))
+          .map((v: any) => {
+            const isBl = (v.Visitor?.id && blacklistedVisitorIds.has(v.Visitor.id)) ||
+                         (v.Visitor?.fullName && blacklistedNames.has(v.Visitor.fullName.toLowerCase().trim())) ||
+                         false;
+            return {
+              id: v.id,
+              visitorId: v.visitorId,
+              visitorName: v.Visitor?.fullName || 'Visitor',
+              visitorEmail: v.Visitor?.email || '',
+              visitorPhone: v.Visitor?.phone || '',
+              visitorCompany: v.Visitor?.company || '',
+              visitorType: v.Visitor?.visitorType || 'Guest',
+              hostId: v.Employee?.id || '',
+              hostName: v.Employee?.fullName || 'Host',
+              hostEmail: v.Employee?.email || '',
+              hostPhone: v.Employee?.phone || '',
+              purpose: v.purpose,
+              status: v.status,
+              scheduledAt: v.scheduledAt,
+              createdAt: v.createdAt,
+              checkedInAt: v.checkedInAt,
+              checkedOutAt: v.checkedOutAt,
+              deniedReason: v.deniedReason || '',
+              zoneAccess: v.zoneAccess || '',
+              photoUrl: v.Visitor?.photoUrl || '',
+              additionalGuests: v.additionalGuests || 0,
+              isBlacklisted: isBl,
+              blacklistFlag: branchUserIds.includes(v.Visitor?.flaggedByUserId) ? (v.Visitor?.blacklistFlag || '') : 'none'
+            };
+          })
           .filter((v: any) => {
             const time = new Date(v.scheduledAt || v.createdAt).getTime();
             return time >= startOfDay.getTime() && time <= endOfDay.getTime();
@@ -1680,6 +1738,21 @@ export default function App() {
   const fetchFutureInvitations = async () => {
     setLoading(true);
     try {
+      // Get branch users
+      const { data: branchUsers } = await supabase
+        .from('User')
+        .select('id')
+        .eq('branchId', user.branchId);
+      const branchUserIds = (branchUsers || []).map((u: any) => u.id);
+
+      // Get branch blacklist
+      const { data: branchBlacklist } = await supabase
+        .from('Blacklist')
+        .select('visitorId, fullName')
+        .in('addedByUserId', branchUserIds);
+      const blacklistedVisitorIds = new Set((branchBlacklist || []).map((b: any) => b.visitorId).filter(Boolean));
+      const blacklistedNames = new Set((branchBlacklist || []).map((b: any) => b.fullName?.toLowerCase().trim()).filter(Boolean));
+
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
@@ -1699,7 +1772,8 @@ export default function App() {
             company,
             visitorType,
             isBlacklisted,
-            blacklistFlag
+            blacklistFlag,
+            flaggedByUserId
           ),
           Employee (
             id,
@@ -1732,7 +1806,8 @@ export default function App() {
               company,
               visitorType,
               isBlacklisted,
-              blacklistFlag
+              blacklistFlag,
+              flaggedByUserId
             ),
             Employee (
               id,
@@ -1754,24 +1829,29 @@ export default function App() {
       if (error) throw error;
 
       if (data) {
-        const mapped = data.filter((v: any) => v.Visitor !== null).map((v: any) => ({
-          id: v.id,
-          visitorId: v.Visitor?.id || '',
-          visitorName: v.Visitor?.fullName || 'Visitor',
-          visitorEmail: v.Visitor?.email || '',
-          visitorPhone: v.Visitor?.phone || '',
-          visitorCompany: v.Visitor?.company || '',
-          visitorType: v.Visitor?.visitorType || 'Guest',
-          hostName: v.Employee?.fullName || 'Host',
-          hostPhone: v.Employee?.phone || '',
-          hostDept: v.Employee?.Department?.name || '',
-          purpose: v.purpose,
-          status: v.status,
-          scheduledAt: v.scheduledAt,
-          isBlacklisted: v.Visitor?.isBlacklisted || false,
-          blacklistFlag: v.Visitor?.blacklistFlag || '',
-          remarks: v.remarks || ''
-        }));
+        const mapped = data.filter((v: any) => v.Visitor !== null).map((v: any) => {
+          const isBl = (v.Visitor?.id && blacklistedVisitorIds.has(v.Visitor.id)) ||
+                       (v.Visitor?.fullName && blacklistedNames.has(v.Visitor.fullName.toLowerCase().trim())) ||
+                       false;
+          return {
+            id: v.id,
+            visitorId: v.Visitor?.id || '',
+            visitorName: v.Visitor?.fullName || 'Visitor',
+            visitorEmail: v.Visitor?.email || '',
+            visitorPhone: v.Visitor?.phone || '',
+            visitorCompany: v.Visitor?.company || '',
+            visitorType: v.Visitor?.visitorType || 'Guest',
+            hostName: v.Employee?.fullName || 'Host',
+            hostPhone: v.Employee?.phone || '',
+            hostDept: v.Employee?.Department?.name || '',
+            purpose: v.purpose,
+            status: v.status,
+            scheduledAt: v.scheduledAt,
+            isBlacklisted: isBl,
+            blacklistFlag: branchUserIds.includes(v.Visitor?.flaggedByUserId) ? (v.Visitor?.blacklistFlag || '') : 'none',
+            remarks: v.remarks || ''
+          };
+        });
         setFutureInvitations(mapped);
       }
     } catch (err: any) {
@@ -1784,6 +1864,21 @@ export default function App() {
   const fetchPastRecords = async () => {
     setLoading(true);
     try {
+      // Get branch users
+      const { data: branchUsers } = await supabase
+        .from('User')
+        .select('id')
+        .eq('branchId', user.branchId);
+      const branchUserIds = (branchUsers || []).map((u: any) => u.id);
+
+      // Get branch blacklist
+      const { data: branchBlacklist } = await supabase
+        .from('Blacklist')
+        .select('visitorId, fullName')
+        .in('addedByUserId', branchUserIds);
+      const blacklistedVisitorIds = new Set((branchBlacklist || []).map((b: any) => b.visitorId).filter(Boolean));
+      const blacklistedNames = new Set((branchBlacklist || []).map((b: any) => b.fullName?.toLowerCase().trim()).filter(Boolean));
+
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
@@ -1829,30 +1924,35 @@ export default function App() {
       if (error) throw error;
 
       if (data) {
-        const mapped = data.filter((v: any) => v.Visitor !== null).map((v: any) => ({
-          id: v.id,
-          visitorId: v.Visitor?.id || '',
-          visitorName: v.Visitor?.fullName || 'Visitor',
-          visitorEmail: v.Visitor?.email || '',
-          visitorPhone: v.Visitor?.phone || '',
-          visitorCompany: v.Visitor?.company || '',
-          visitorType: v.Visitor?.visitorType || 'Guest',
-          visitorLocation: v.Visitor?.location || '',
-          isBlacklisted: v.Visitor?.isBlacklisted || false,
-          hostName: v.Employee?.fullName || 'Host',
-          hostPhone: v.Employee?.phone || '',
-          hostFloor: v.Employee?.floor || '',
-          department: v.Employee?.Department?.name || (Array.isArray(v.Employee?.Department) ? v.Employee?.Department[0]?.name : '') || 'N/A',
-          purpose: v.purpose,
-          status: v.status,
-          scheduledAt: v.scheduledAt,
-          checkedInAt: v.checkedInAt,
-          checkedOutAt: v.checkedOutAt,
-          deniedReason: v.deniedReason || '',
-          zoneAccess: v.zoneAccess || 'Floor 1, Lobby',
-          badgeNumber: v.Badge?.badgeNumber || (Array.isArray(v.Badge) ? v.Badge[0]?.badgeNumber : '') || 'N/A',
-          additionalGuests: v.additionalGuests || 0
-        }));
+        const mapped = data.filter((v: any) => v.Visitor !== null).map((v: any) => {
+          const isBl = (v.Visitor?.id && blacklistedVisitorIds.has(v.Visitor.id)) ||
+                       (v.Visitor?.fullName && blacklistedNames.has(v.Visitor.fullName.toLowerCase().trim())) ||
+                       false;
+          return {
+            id: v.id,
+            visitorId: v.Visitor?.id || '',
+            visitorName: v.Visitor?.fullName || 'Visitor',
+            visitorEmail: v.Visitor?.email || '',
+            visitorPhone: v.Visitor?.phone || '',
+            visitorCompany: v.Visitor?.company || '',
+            visitorType: v.Visitor?.visitorType || 'Guest',
+            visitorLocation: v.Visitor?.location || '',
+            isBlacklisted: isBl,
+            hostName: v.Employee?.fullName || 'Host',
+            hostPhone: v.Employee?.phone || '',
+            hostFloor: v.Employee?.floor || '',
+            department: v.Employee?.Department?.name || (Array.isArray(v.Employee?.Department) ? v.Employee?.Department[0]?.name : '') || 'N/A',
+            purpose: v.purpose,
+            status: v.status,
+            scheduledAt: v.scheduledAt,
+            checkedInAt: v.checkedInAt,
+            checkedOutAt: v.checkedOutAt,
+            deniedReason: v.deniedReason || '',
+            zoneAccess: v.zoneAccess || 'Floor 1, Lobby',
+            badgeNumber: v.Badge?.badgeNumber || (Array.isArray(v.Badge) ? v.Badge[0]?.badgeNumber : '') || 'N/A',
+            additionalGuests: v.additionalGuests || 0
+          };
+        });
         setPastRecords(mapped);
       }
     } catch (err: any) {
@@ -2136,37 +2236,46 @@ export default function App() {
       const emailInput = preEmail.trim().toLowerCase();
       const phoneInput = finalPhone.trim();
 
-      if (emailInput) {
-        const { data: blEmail } = await supabase
-          .from('Visitor')
-          .select('isBlacklisted')
-          .eq('email', emailInput)
-          .eq('isBlacklisted', true)
-          .maybeSingle();
-        if (blEmail) blacklistCheck = true;
-      }
-      if (!blacklistCheck && phoneInput) {
-        const { data: blPhone } = await supabase
-          .from('Visitor')
-          .select('isBlacklisted')
-          .eq('phone', phoneInput)
-          .eq('isBlacklisted', true)
-          .maybeSingle();
-        if (blPhone) blacklistCheck = true;
-      }
-      if (!blacklistCheck && preName.trim()) {
-        const { data: blName } = await supabase
-          .from('Visitor')
-          .select('id, email, phone, isBlacklisted')
-          .ilike('fullName', preName.trim())
-          .eq('isBlacklisted', true);
-        if (blName && blName.length > 0) {
-          const matchesAny = blName.some(v => {
-            const emailDb = (v.email || '').trim().toLowerCase();
-            const phoneDb = (v.phone || '').trim();
-            return emailInput === emailDb && phoneInput === phoneDb;
-          });
-          if (matchesAny) blacklistCheck = true;
+      // Get branch users
+      const { data: branchUsers } = await supabase
+        .from('User')
+        .select('id')
+        .eq('branchId', user.branchId);
+      const branchUserIds = (branchUsers || []).map((u: any) => u.id);
+
+      // Find matching visitors
+      const { data: matchingVisitors } = await supabase
+        .from('Visitor')
+        .select('id, fullName, email, phone')
+        .or(`email.eq.${emailInput},phone.eq.${phoneInput},fullName.ilike.${preName.trim()}`);
+
+      if (matchingVisitors && matchingVisitors.length > 0) {
+        const matchingVisitorIds = matchingVisitors.map((v: any) => v.id);
+        
+        let query = supabase
+          .from('Blacklist')
+          .select('id')
+          .in('addedByUserId', branchUserIds);
+          
+        if (matchingVisitorIds.length > 0) {
+          query = query.or(`visitorId.in.(${matchingVisitorIds.join(',')}),fullName.ilike.${preName.trim()}`);
+        } else {
+          query = query.ilike('fullName', preName.trim());
+        }
+        
+        const { data: blMatches } = await query;
+        if (blMatches && blMatches.length > 0) {
+          blacklistCheck = true;
+        }
+      } else {
+        // Just search by name in Blacklist table for this branch
+        const { data: blMatches } = await supabase
+          .from('Blacklist')
+          .select('id')
+          .in('addedByUserId', branchUserIds)
+          .ilike('fullName', preName.trim());
+        if (blMatches && blMatches.length > 0) {
+          blacklistCheck = true;
         }
       }
 
