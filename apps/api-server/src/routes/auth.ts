@@ -10,6 +10,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'vms_super_secret_key_12345';
 interface LoginTracker {
   attempts: number;
   lockoutUntil: number;
+  captchaQuestion?: string;
+  captchaAnswer?: string;
 }
 
 // In-memory rate limiting / security state tracker
@@ -66,12 +68,57 @@ router.post('/pre-login-check', async (req: any, res: Response) => {
   const ipAttempts = ipData ? ipData.attempts : 0;
 
   if (emailAttempts >= 3 || ipAttempts >= 3) {
-    // Math puzzle challenge: What is 4 + 7? -> '11'
-    if (captchaAnswer !== '11') {
+    const tracker = emailTracker[email] || { attempts: emailAttempts, lockoutUntil: 0 };
+    if (!emailTracker[email]) {
+      emailTracker[email] = tracker;
+    }
+
+    // Helper to generate a random math captcha question
+    const generateCaptcha = () => {
+      const num1 = Math.floor(Math.random() * 10) + 1; // 1 to 10
+      const num2 = Math.floor(Math.random() * 10) + 1; // 1 to 10
+      const operations = ['+', '-', '*'];
+      const op = operations[Math.floor(Math.random() * operations.length)];
+      let question = '';
+      let answer = 0;
+      switch (op) {
+        case '+':
+          question = `What is ${num1} + ${num2}?`;
+          answer = num1 + num2;
+          break;
+        case '-':
+          const max = Math.max(num1, num2);
+          const min = Math.min(num1, num2);
+          question = `What is ${max} - ${min}?`;
+          answer = max - min;
+          break;
+        case '*':
+          question = `What is ${num1} * ${num2}?`;
+          answer = num1 * num2;
+          break;
+      }
+      return { question, answer: String(answer) };
+    };
+
+    // If captcha is not generated yet, generate it
+    if (!tracker.captchaQuestion || !tracker.captchaAnswer) {
+      const captcha = generateCaptcha();
+      tracker.captchaQuestion = captcha.question;
+      tracker.captchaAnswer = captcha.answer;
+    }
+
+    if (!captchaAnswer || captchaAnswer !== tracker.captchaAnswer) {
+      const currentQuestion = tracker.captchaQuestion;
+      // Generate a new captcha for the next try
+      const newCaptcha = generateCaptcha();
+      tracker.captchaQuestion = newCaptcha.question;
+      tracker.captchaAnswer = newCaptcha.answer;
+
       return res.json({
         success: false,
         error: 'CAPTCHA_REQUIRED',
-        message: 'Security check: Please prove you are human.'
+        message: 'Security check: Please prove you are human.',
+        captchaQuestion: currentQuestion
       });
     }
   }
@@ -104,6 +151,10 @@ router.post('/log-login-failure', async (req: any, res: Response) => {
   if (emailTracker[email].attempts >= 5) {
     emailTracker[email].lockoutUntil = now + 15 * 60 * 1000; // 15 mins
   }
+
+  // Clear captcha on failure so that user gets a new captcha challenge on their next try
+  delete emailTracker[email].captchaQuestion;
+  delete emailTracker[email].captchaAnswer;
 
   // Update IP tracking
   if (!ipTracker[ip]) {

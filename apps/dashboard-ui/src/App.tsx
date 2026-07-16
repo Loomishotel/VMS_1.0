@@ -486,6 +486,7 @@ export default function App() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [captchaRequired, setCaptchaRequired] = useState<boolean>(false);
   const [captchaInput, setCaptchaInput] = useState<string>('');
+  const [captchaQuestion, setCaptchaQuestion] = useState<string>('What is 4 + 7?');
 
   // Login failure limits and Lockout States
   const [loginAttempts, setLoginAttempts] = useState<number>(() => {
@@ -664,6 +665,16 @@ export default function App() {
   const [addEmpPhone, setAddEmpPhone] = useState('');
   const [addEmpFloor, setAddEmpFloor] = useState('');
   const [addEmpDeptId, setAddEmpDeptId] = useState('');
+
+  // Edit Employee Form States
+  const [showEditEmpModal, setShowEditEmpModal] = useState(false);
+  const [editEmpId, setEditEmpId] = useState('');
+  const [editEmpName, setEditEmpName] = useState('');
+  const [editEmpEmail, setEditEmpEmail] = useState('');
+  const [editEmpPhone, setEditEmpPhone] = useState('');
+  const [editEmpFloor, setEditEmpFloor] = useState('');
+  const [editEmpDeptId, setEditEmpDeptId] = useState('');
+  const [editEmpActive, setEditEmpActive] = useState(true);
   const [depts, setDepts] = useState<any[]>([]);
 
   // Blacklist States
@@ -959,6 +970,9 @@ export default function App() {
       setLoading(false);
       if (checkData.error === 'CAPTCHA_REQUIRED') {
         setCaptchaRequired(true);
+        if (checkData.captchaQuestion) {
+          setCaptchaQuestion(checkData.captchaQuestion);
+        }
         setLoginError(checkData.message);
         return;
       } else if (checkData.error === 'IP_LOCKED' || checkData.error === 'EMAIL_LOCKED') {
@@ -996,6 +1010,7 @@ export default function App() {
         // Reset frontend local states
         setCaptchaRequired(false);
         setCaptchaInput('');
+        setCaptchaQuestion('What is 4 + 7?');
         localStorage.removeItem('vms_login_attempts');
         localStorage.removeItem('vms_login_lockout_until');
         setLoginAttempts(0);
@@ -1407,6 +1422,16 @@ export default function App() {
 
       if (error) throw error;
 
+      // Clean up the corresponding Blacklist table entry
+      const { error: blDeleteErr } = await supabase
+        .from('Blacklist')
+        .delete()
+        .eq('visitorId', visitorId);
+
+      if (blDeleteErr) {
+        console.warn("Failed to delete entry from Blacklist table:", blDeleteErr);
+      }
+
       await supabase.from('AuditLog').insert({
         actorUserId: user.id,
         action: 'REMOVE_FROM_BLACKLIST',
@@ -1779,7 +1804,8 @@ export default function App() {
             phone,
             company,
             visitorType,
-            location
+            location,
+            isBlacklisted
           ),
           Employee (
             id,
@@ -1810,6 +1836,7 @@ export default function App() {
           visitorCompany: v.Visitor?.company || '',
           visitorType: v.Visitor?.visitorType || 'Guest',
           visitorLocation: v.Visitor?.location || '',
+          isBlacklisted: v.Visitor?.isBlacklisted || false,
           hostName: v.Employee?.fullName || 'Host',
           hostPhone: v.Employee?.phone || '',
           hostFloor: v.Employee?.floor || '',
@@ -2466,6 +2493,72 @@ export default function App() {
     }
   };
 
+  const startEditEmployee = (emp: any) => {
+    setEditEmpId(emp.id);
+    setEditEmpName(emp.fullName);
+    setEditEmpEmail(emp.email);
+    setEditEmpPhone(emp.phone);
+    setEditEmpFloor(emp.floor || '');
+    setEditEmpDeptId(emp.departmentId || '');
+    setEditEmpActive(emp.isActive);
+    setShowEditEmpModal(true);
+  };
+
+  const handleEditEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editEmpId || !editEmpName || !editEmpEmail || !editEmpPhone || !editEmpDeptId) return;
+
+    try {
+      const { error } = await supabase
+        .from('Employee')
+        .update({
+          fullName: editEmpName,
+          email: editEmpEmail,
+          phone: editEmpPhone,
+          floor: editEmpFloor || null,
+          departmentId: editEmpDeptId,
+          isActive: editEmpActive
+        })
+        .eq('id', editEmpId);
+
+      if (error) throw error;
+
+      setAlertMessage({ type: 'success', text: `Employee ${editEmpName} updated successfully.` });
+      setShowEditEmpModal(false);
+      fetchEmployees();
+    } catch (err: any) {
+      setAlertMessage({ type: 'error', text: err.message || 'Failed to update employee' });
+    }
+  };
+
+  const handleRemoveEmployee = async (empId: string, empName: string) => {
+    if (!confirm(`Are you sure you want to remove employee ${empName}? This will delete their profile or deactivate them if they have past visits.`)) {
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('Employee')
+        .delete()
+        .eq('id', empId);
+
+      if (error) {
+        console.warn("Hard delete failed, deactivating instead", error);
+        const { error: updateError } = await supabase
+          .from('Employee')
+          .update({ isActive: false })
+          .eq('id', empId);
+
+        if (updateError) throw updateError;
+        setAlertMessage({ type: 'success', text: `Employee ${empName} has past records, so they were deactivated instead of deleted.` });
+      } else {
+        setAlertMessage({ type: 'success', text: `Employee ${empName} was successfully removed.` });
+      }
+      fetchEmployees();
+    } catch (err: any) {
+      setAlertMessage({ type: 'error', text: err.message || 'Failed to remove employee' });
+    }
+  };
+
   // Add Blacklist
   const handleAddBlacklist = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2632,7 +2725,7 @@ export default function App() {
                   🛡️ Security Check
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
-                  Please prove you are human. What is <strong>4 + 7</strong>?
+                  Please prove you are human: <strong>{captchaQuestion}</strong>
                 </div>
                 <input 
                   type="text" 
@@ -3257,6 +3350,7 @@ export default function App() {
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                                       <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{item.visitorName}</span>
+                                      {item.isBlacklisted && <Badge tone="danger">⚠️ BLACKLISTED</Badge>}
                                       
                                       {item.additionalGuests > 0 && (
                                         <Badge tone="warning">
@@ -4132,11 +4226,19 @@ export default function App() {
                       : 'No pending flags — all clear'}
                   </p>
                 </div>
-                {flaggedVisitors.length > 0 && (
-                  <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '8px 18px', color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.88rem' }}>
-                    ⚠️ {flaggedVisitors.length} Pending Review{flaggedVisitors.length > 1 ? 's' : ''}
-                  </div>
-                )}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  {user.role === 'Admin' && (
+                    <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setShowAddBlModal(true)}>
+                      <Plus size={16} />
+                      <span>Manually Blacklist Person</span>
+                    </button>
+                  )}
+                  {flaggedVisitors.length > 0 && (
+                    <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '8px 18px', color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.88rem' }}>
+                      ⚠️ {flaggedVisitors.length} Pending Review{flaggedVisitors.length > 1 ? 's' : ''}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {flaggedVisitors.length === 0 ? (
@@ -4461,10 +4563,10 @@ export default function App() {
                     />
                     <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
                   </div>
-                  {user.role !== 'Admin' && user.role === 'SuperAdmin' && (
+                  {user.role === 'Admin' && (
                     <button className="btn btn-primary" onClick={() => setShowAddEmpModal(true)}>
                       <Plus size={16} />
-                      <span>Add Host Employee</span>
+                      <span>Add Employee</span>
                     </button>
                   )}
                 </div>
@@ -4479,12 +4581,13 @@ export default function App() {
                         <th>Phone Number</th>
                         <th>Location Desk</th>
                         <th>Status</th>
+                        {user.role === 'Admin' && <th style={{ textAlign: 'right' }}>Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
                       {filteredEmployees.length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', padding: '30px 0', color: 'var(--color-text-secondary)' }}>
+                          <td colSpan={user.role === 'Admin' ? 7 : 6} style={{ textAlign: 'center', padding: '30px 0', color: 'var(--color-text-secondary)' }}>
                             No employees found matching directory search.
                           </td>
                         </tr>
@@ -4505,6 +4608,26 @@ export default function App() {
                                 {e.isActive ? 'Active' : 'Inactive'}
                               </span>
                             </td>
+                            {user.role === 'Admin' && (
+                              <td style={{ textAlign: 'right' }}>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                  <button
+                                    className="btn btn-secondary"
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                    onClick={() => startEditEmployee(e)}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="btn btn-danger"
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                    onClick={() => handleRemoveEmployee(e.id, e.fullName)}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         ))
                       )}
@@ -5221,6 +5344,69 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddEmpModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Add Employee</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Edit Host Employee */}
+      {showEditEmpModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Edit Employee Profile</h3>
+              <button style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }} onClick={() => setShowEditEmpModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditEmployee}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Host Full Name *</label>
+                <input type="text" className="form-input" required value={editEmpName} onChange={e => setEditEmpName(e.target.value)} placeholder="Tanya Verma" />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Email Address *</label>
+                  <input type="email" className="form-input" required value={editEmpEmail} onChange={e => setEditEmpEmail(e.target.value)} placeholder="tanya@company.com" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Phone Number *</label>
+                  <input type="text" className="form-input" required value={editEmpPhone} onChange={e => setEditEmpPhone(e.target.value)} placeholder="+1 (555) 0123" />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Department *</label>
+                  <select className="form-input" required value={editEmpDeptId} onChange={e => setEditEmpDeptId(e.target.value)} style={{ background: 'var(--menu-item-bg)' }}>
+                    <option value="">-- Select Dept --</option>
+                    {depts.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Desk Location Floor</label>
+                  <input type="text" className="form-input" value={editEmpFloor} onChange={e => setEditEmpFloor(e.target.value)} placeholder="Floor 3" />
+                </div>
+              </div>
+              <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  id="editEmpActiveCheckbox"
+                  checked={editEmpActive}
+                  onChange={e => setEditEmpActive(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <label htmlFor="editEmpActiveCheckbox" style={{ fontSize: '0.85rem', color: 'var(--color-text-primary)', cursor: 'pointer', userSelect: 'none' }}>
+                  Profile Active (Available as Host)
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEditEmpModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Save Changes</button>
               </div>
             </form>
           </div>

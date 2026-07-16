@@ -428,6 +428,10 @@ router.put('/:id/status', authenticateToken as any, requirePermission('visit.che
       return res.status(400).json({ success: false, error: { code: 'VISIT_DENIED', message: 'This visit has been denied entry and cannot be checked in' } });
     }
 
+    if (visit.visitor.isBlacklisted && (status === 'CheckedIn' || status === 'Waiting')) {
+      return res.status(403).json({ success: false, error: { code: 'VISITOR_BLACKLISTED', message: 'Safety check failed: This visitor is currently flagged on the blacklist.' } });
+    }
+
     const updated = await prisma.$transaction(async (tx: any) => {
       const dbVisit = await tx.visit.update({
         where: { id },
