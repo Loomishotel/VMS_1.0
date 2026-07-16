@@ -36,6 +36,11 @@
   --indigo-primary: #e05a47; 
   --indigo-hover: #c84e3c;
   --teal-accent: #e05a47;
+  --indigo-secondary: #c84e3c;
+  --btn-secondary-bg: #f1f5f9;
+  --btn-secondary-border: #cbd5e1;
+  --btn-danger-bg-start: #ef4444;
+  --btn-danger-bg-end: #dc2626;
   
   /* Status Color Palettes */
   --status-expected: rgba(59, 130, 246, 0.08);
@@ -113,6 +118,11 @@ html.dark, body.dark, :root.dark, .dark {
   --indigo-primary: #e05a47;
   --indigo-hover: #f07a68;
   --teal-accent: #e05a47;
+  --indigo-secondary: #f07a68;
+  --btn-secondary-bg: rgba(255, 255, 255, 0.05);
+  --btn-secondary-border: rgba(255, 255, 255, 0.1);
+  --btn-danger-bg-start: #ef4444;
+  --btn-danger-bg-end: #dc2626;
   
   /* Status Color Palettes (Dark Mode) */
   --status-expected: rgba(59, 130, 246, 0.15);

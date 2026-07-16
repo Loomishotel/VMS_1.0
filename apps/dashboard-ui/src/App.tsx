@@ -376,14 +376,14 @@ export function Button({
     switch (variant) {
       case 'primary':
         return {
-          background: 'linear-gradient(180deg, #e05a47 0%, #c84e3c 100%)',
+          background: 'linear-gradient(180deg, var(--indigo-primary) 0%, var(--indigo-secondary) 100%)',
           color: '#fff',
           border: 'none',
           boxShadow: '0 4px 12px rgba(224, 90, 71, 0.2)',
         };
       case 'danger':
         return {
-          background: 'linear-gradient(180deg, #ef4444 0%, #dc2626 100%)',
+          background: 'linear-gradient(180deg, var(--btn-danger-bg-start) 0%, var(--btn-danger-bg-end) 100%)',
           color: '#fff',
           border: 'none',
           boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
@@ -391,9 +391,9 @@ export function Button({
       case 'secondary':
       default:
         return {
-          background: 'rgba(255, 255, 255, 0.05)',
+          background: 'var(--btn-secondary-bg)',
           color: 'var(--color-text-primary)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          border: '1px solid var(--btn-secondary-border)',
         };
     }
   };
@@ -401,6 +401,7 @@ export function Button({
   return (
     <button
       disabled={disabled || isLoading}
+      className={`btn btn-${variant}`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -510,6 +511,7 @@ export default function App() {
   const [queue, setQueue] = useState<any[]>([]);
   const [queueSearch, setQueueSearch] = useState('');
   const [showPreRegModal, setShowPreRegModal] = useState(false);
+  const [showBlacklistBlockedModal, setShowBlacklistBlockedModal] = useState(false);
   const [showDenyModal, setShowDenyModal] = useState<string | null>(null); // holds visitId
   const [denyReason, setDeniedReason] = useState('');
   const [showPassModal, setShowPassModal] = useState<any | null>(null); // holds printed pass data
@@ -2045,7 +2047,13 @@ export default function App() {
     }
   };
 
-  ;
+  const handleCloseBlacklistBlockedModal = () => {
+    setShowBlacklistBlockedModal(false);
+    setShowPreRegModal(false);
+    if (currentView === 'employee_invite') {
+      setCurrentView('employee_scheduled');
+    }
+  };
 
   // Pre-Register Guest Handler
   const handlePreRegister = async (e: React.FormEvent) => {
@@ -2163,7 +2171,7 @@ export default function App() {
       }
 
       if (blacklistCheck) {
-        setAlertMessage({ type: 'error', text: 'This visitor is blacklisted and cannot be registered for a visit.' });
+        setShowBlacklistBlockedModal(true);
         return;
       }
 
@@ -5958,6 +5966,43 @@ export default function App() {
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {/* Blacklist Blocked Modal */}
+      {showBlacklistBlockedModal && (
+        <div className="modal-overlay" style={{ zIndex: 1300 }}>
+          <div className="modal-content" style={{ maxWidth: '400px', width: '100%', background: 'var(--card-bg-solid)', border: '1px solid var(--card-border)', textAlign: 'center', padding: '32px' }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: 'var(--color-danger)',
+              borderRadius: '50%',
+              padding: '16px',
+              marginBottom: '20px'
+            }}>
+              <ShieldAlert size={32} />
+            </div>
+            
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '10px' }}>
+              Registration Blocked
+            </h3>
+            
+            <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', lineHeight: '1.6', marginBottom: '24px' }}>
+              this person is blacklisted by admin/organisation, contact admin for further support.
+            </p>
+            
+            <Button 
+              variant="danger" 
+              style={{ width: '100%', padding: '12px' }} 
+              onClick={handleCloseBlacklistBlockedModal}
+            >
+              Close
+            </Button>
+          </div>
         </div>
       )}
 
