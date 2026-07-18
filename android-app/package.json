@@ -1,0 +1,20 @@
+{
+  "name": "vms-android",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:web": "npm run build --workspace=dashboard-ui",
+    "cap:sync": "cap sync",
+    "cap:open": "cap open android",
+    "cap:add": "cap add android",
+    "android:sync": "npm run build:web && npm run cap:sync",
+    "android:open": "npm run android:sync && npm run cap:open"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  }
+}

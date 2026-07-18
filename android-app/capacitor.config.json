@@ -1,0 +1,8 @@
+{
+  "appId": "com.loomishotel.vms",
+  "appName": "VMS Mobile",
+  "webDir": "../apps/dashboard-ui/dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

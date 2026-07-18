@@ -437,6 +437,21 @@ export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('vms_token'));
   const [user, setUser] = useState<any | null>(null);
   const [currentView, setCurrentView] = useState<View>('queue');
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor;
+      const isUaMobile = typeof navigator !== 'undefined' && /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isSmallScreen = typeof window !== 'undefined' && window.innerWidth <= 768;
+      setIsMobile(!!isCapacitor || isUaMobile || isSmallScreen);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [realtimeNotification, setRealtimeNotification] = useState<{
@@ -2867,10 +2882,1592 @@ export default function App() {
     );
   }
 
+  // ────────────────────────────────────────────────────────────────────────
+  // Mobile View Rendering & Helpers
+  // ────────────────────────────────────────────────────────────────────────
+
+  const getMobileMenuItems = () => {
+    const items: { view: View; label: string; icon: React.ComponentType<any> }[] = [];
+    if (!user) return items;
+    if (user.role === 'Security') {
+      items.push(
+        { view: 'security_arrivals', label: "Today's Arrivals", icon: Clock },
+        { view: 'check_invite', label: "Check Invitation", icon: Search },
+        { view: 'security_history', label: "Past Records", icon: History }
+      );
+    } else if (user.role === 'Employee') {
+      items.push(
+        { view: 'employee_scheduled', label: "Today's Scheduled", icon: Clock },
+        { view: 'employee_past', label: "Past Hosted Visits", icon: History },
+        { view: 'employee_future', label: "My Future Visits", icon: Calendar },
+        { view: 'employee_invite', label: "Invite Future Guest", icon: Plus }
+      );
+    } else {
+      // Admin / Receptionist / Staff
+      items.push(
+        { view: 'queue', label: "Lobby Queue", icon: Clock },
+        { view: 'employees', label: "Company Directory", icon: Users },
+        { view: 'blacklist_review', label: "Blacklist Review Queue", icon: ShieldAlert },
+        { view: 'analytics', label: "Analytics", icon: BarChart2 }
+      );
+    }
+    return items;
+  };
+
+  const getViewIcon = (view: View) => {
+    switch (view) {
+      case 'security_arrivals':
+      case 'employee_scheduled':
+      case 'queue':
+        return <Clock size={20} />;
+      case 'check_invite':
+        return <Search size={20} />;
+      case 'security_history':
+      case 'employee_past':
+        return <History size={20} />;
+      case 'employee_future':
+        return <Calendar size={20} />;
+      case 'employee_invite':
+        return <Plus size={20} />;
+      case 'employees':
+        return <Users size={20} />;
+      case 'blacklist_review':
+        return <ShieldAlert size={20} />;
+      case 'analytics':
+        return <BarChart2 size={20} />;
+      default:
+        return <Clock size={20} />;
+    }
+  };
+
+  const renderMobileQueueView = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          {[
+            { label: 'Expected', val: queueStats.expected, color: '#60a5fa' },
+            { label: 'In Office', val: queueStats.checkedin, color: '#4ade80' },
+            { label: 'Waiting', val: queueStats.waiting, color: '#fbbf24' },
+            { label: 'Departed', val: queueStats.checkedout, color: '#a1a1aa' }
+          ].map(stat => (
+            <div key={stat.label} style={{
+              background: 'var(--card-bg)',
+              border: '1.5px solid var(--card-border)',
+              borderRadius: '12px',
+              padding: '12px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              boxShadow: 'var(--card-shadow)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>{stat.label}</span>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: stat.color }} />
+              </div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{stat.val}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <input 
+              type="text" 
+              className="form-input" 
+              placeholder="Filter queue by visitor, host..." 
+              value={queueSearch}
+              onChange={e => setQueueSearch(e.target.value)}
+              style={{ paddingLeft: '36px', height: '40px', fontSize: '0.85rem' }}
+            />
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+          </div>
+          {user.role === 'Receptionist' && (
+            <button 
+              className="btn btn-primary" 
+              onClick={() => setShowPreRegModal(true)}
+              style={{ width: '100%', justifyContent: 'center', height: '40px', fontSize: '0.85rem' }}
+            >
+              <Plus size={16} />
+              <span>Pre-Register Guest</span>
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {filteredQueue.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px' }}>
+              No visitors registered in lobby queue today.
+            </div>
+          ) : (
+            filteredQueue.map(item => (
+              <div key={item.id} style={{
+                background: 'var(--card-bg)',
+                border: item.isBlacklisted ? '1.5px solid var(--color-danger)' : '1.5px solid var(--card-border)',
+                borderRadius: '14px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                boxShadow: 'var(--card-shadow)'
+              }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.visitorName}
+                      </div>
+                      <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600, fontSize: '0.75rem', background: `var(--visitor-${item.visitorType?.toLowerCase()}-bg)`, border: `1px solid var(--visitor-${item.visitorType?.toLowerCase()}-border)`, padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                        {item.visitorType}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                      🏢 {item.visitorCompany || 'Independent'}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'var(--card-bg-subtle)',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  <div>💬 <strong>Purpose:</strong> {item.purpose}</div>
+                  <div>👤 <strong>Host:</strong> {item.hostName} ({item.hostPhone || 'N/A'})</div>
+                  {item.checkedInAt && (
+                    <div>🟢 <strong>Checked In:</strong> {new Date(item.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--card-border)', paddingTop: '10px' }}>
+                  <StatusIndicator status={item.status} />
+                  
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {item.isBlacklisted ? (
+                      <span style={{ background: '#ef4444', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600 }}>⚠️ BLACKLISTED</span>
+                    ) : (
+                      <>
+                        {item.status === 'Waiting' && user.role === 'Receptionist' && (
+                          <>
+                            <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem' }} onClick={() => triggerCheckIn(item.id)}>
+                              Approve
+                            </button>
+                            <button className="btn btn-danger" style={{ padding: '6px 10px', fontSize: '0.75rem' }} onClick={() => setShowDenyModal(item.id)}>
+                              Deny
+                            </button>
+                          </>
+                        )}
+                        {(item.status === 'CheckedIn' || item.status === 'InMeeting') && user.role === 'Receptionist' && (
+                          <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => handleCheckOut(item.id)}>
+                            Check Out
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileSecurityArrivalsView = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <input 
+              type="text" 
+              className="form-input" 
+              placeholder="Search today's arrivals..." 
+              value={queueSearch}
+              onChange={e => setQueueSearch(e.target.value)}
+              style={{ paddingLeft: '36px', height: '40px', fontSize: '0.85rem' }}
+            />
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+          </div>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => setShowPreRegModal(true)}
+            style={{ width: '100%', justifyContent: 'center', height: '40px', fontSize: '0.85rem' }}
+          >
+            <Plus size={16} />
+            <span>Register Walk-in</span>
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {activeArrivalsToday.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px' }}>
+              No visits scheduled at the gate for today.
+            </div>
+          ) : filteredArrivals.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px' }}>
+              No matching arrivals found.
+            </div>
+          ) : (
+            filteredArrivals.map(item => (
+              <div key={item.id} style={{
+                background: 'var(--card-bg)',
+                border: item.isBlacklisted ? '1.5px solid var(--color-danger)' : '1.5px solid var(--card-border)',
+                borderRadius: '14px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                boxShadow: 'var(--card-shadow)'
+              }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.visitorName}
+                      </div>
+                      <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600, fontSize: '0.75rem', background: `var(--visitor-${item.visitorType?.toLowerCase()}-bg)`, border: `1px solid var(--visitor-${item.visitorType?.toLowerCase()}-border)`, padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                        {item.visitorType}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                      🏢 {item.visitorCompany || 'Independent'}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'var(--card-bg-subtle)',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  <div>💬 <strong>Purpose:</strong> {item.purpose}</div>
+                  <div>👤 <strong>Host:</strong> {item.hostName} ({item.hostPhone || 'N/A'})</div>
+                  {item.scheduledAt && (
+                    <div>⏰ <strong>Scheduled:</strong> {new Date(item.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  )}
+                  {item.additionalGuests > 0 && (
+                    <div style={{ color: 'var(--color-warning)', fontWeight: 600 }}>➕ {item.additionalGuests} Additional Guests</div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--card-border)', paddingTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <StatusIndicator status={item.status} />
+                    {item.isBlacklisted && <Badge tone="danger">⚠️ BLACKLISTED</Badge>}
+                  </div>
+                  
+                  {!item.isBlacklisted && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
+                      {item.status === 'Expected' && (
+                        <>
+                          <button className="btn btn-primary" style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} onClick={() => handleSecurityMarkArrived(item.id)}>
+                            Arrived
+                          </button>
+                          <button className="btn btn-danger" style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} onClick={() => setShowDenyModal(item.id)}>
+                            Deny Entry
+                          </button>
+                        </>
+                      )}
+                      {item.status === 'Waiting' && (
+                        <>
+                          <button className="btn btn-primary" style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} onClick={() => triggerCheckIn(item.id)}>
+                            Check In
+                          </button>
+                          <button className="btn btn-danger" style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} onClick={() => setShowDenyModal(item.id)}>
+                            Deny Entry
+                          </button>
+                        </>
+                      )}
+                      {item.status === 'CheckedIn' && (
+                        <button className="btn btn-danger" style={{ gridColumn: 'span 2', padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} onClick={() => handleCheckOut(item.id)}>
+                          Check Out
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ flex: 1, padding: '6px 10px', fontSize: '0.75rem', justifyContent: 'center', borderColor: '#ef4444', color: 'var(--color-danger)' }} 
+                      onClick={() => setShowFlagBlacklistModal(item.visitorId)}
+                    >
+                      Flag Blacklist
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileCheckInviteView = () => {
+    const filtered = futureInvitations.filter((item: any) => 
+      item.visitorName.toLowerCase().includes(inviteSearch.toLowerCase()) ||
+      item.hostName.toLowerCase().includes(inviteSearch.toLowerCase())
+    );
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1.5px solid var(--card-border)',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: 'var(--card-shadow)'
+        }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '4px' }}>Verify Visitor Invitation</h3>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', marginBottom: '12px' }}>Verify future invitations made by host/employees.</p>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <input 
+              type="text" 
+              className="form-input" 
+              placeholder="Search future invitations..." 
+              value={inviteSearch} 
+              onChange={e => setInviteSearch(e.target.value)} 
+              style={{ paddingLeft: '36px', height: '38px', fontSize: '0.8rem' }}
+            />
+            <Search size={14} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {futureInvitations.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px' }}>
+              No future invitations scheduled.
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px' }}>
+              No matching invitations found.
+            </div>
+          ) : (
+            filtered.map(item => {
+              const isBl = item.isBlacklisted;
+              const isFlagged = item.blacklistFlag === 'pending_review';
+              const isToday = new Date(item.scheduledAt).toDateString() === new Date().toDateString();
+              
+              return (
+                <div key={item.id} style={{
+                  background: 'var(--card-bg)',
+                  border: isBl ? '1.5px solid var(--color-danger)' : '1.5px solid var(--card-border)',
+                  borderRadius: '14px',
+                  padding: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  boxShadow: 'var(--card-shadow)'
+                }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span>{item.visitorName}</span>
+                          {isBl && <Badge tone="danger" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>Watch</Badge>}
+                          {isFlagged && <Badge tone="warning" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>Review</Badge>}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                          🏢 {item.visitorCompany || 'Independent'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: 'var(--card-bg-subtle)',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    <div>👤 <strong>Host:</strong> {item.hostName || 'N/A'}</div>
+                    <div>📅 <strong>Scheduled:</strong> {new Date(item.scheduledAt).toLocaleString()}</div>
+                    {isToday ? (
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', fontWeight: 600 }}>• Today's Booking</span>
+                    ) : (
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 600 }}>• Future Booking</span>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--card-border)', paddingTop: '10px' }}>
+                    <StatusIndicator status={item.status} />
+                    
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {!isBl && ['Expected', 'Waiting'].includes(item.status) && isToday && (
+                        <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem' }} onClick={() => handleSecurityMarkArrived(item.id)}>
+                          Mark Arrived
+                        </button>
+                      )}
+                      <button 
+                        className="btn btn-secondary" 
+                        style={{ padding: '6px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={() => {
+                          setDetailPanelTab('general');
+                          setSelectedInviteDetails({ ...item, hostDept: item.hostDept || '' });
+                        }}
+                      >
+                        <FileText size={12} /> Details
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileSecurityHistoryView = () => {
+    const filtered = pastRecords.filter((item: any) => 
+      item.visitorName.toLowerCase().includes(pastSearch.toLowerCase()) ||
+      item.hostName.toLowerCase().includes(pastSearch.toLowerCase()) ||
+      item.visitorCompany.toLowerCase().includes(pastSearch.toLowerCase())
+    );
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1.5px solid var(--card-border)',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: 'var(--card-shadow)'
+        }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '4px' }}>Visitor History Log</h3>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', marginBottom: '12px' }}>Search and review completed &amp; past visitor records.</p>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <input 
+              type="text" 
+              className="form-input" 
+              placeholder="Search past logs..." 
+              value={pastSearch} 
+              onChange={e => setPastSearch(e.target.value)} 
+              style={{ paddingLeft: '36px', height: '38px', fontSize: '0.8rem' }}
+            />
+            <Search size={14} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {pastRecords.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px' }}>
+              No past visitor logs found.
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px' }}>
+              No matching past records found.
+            </div>
+          ) : (
+            filtered.map(item => (
+              <div key={item.id} style={{
+                background: 'var(--card-bg)',
+                border: '1.5px solid var(--card-border)',
+                borderRadius: '14px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                boxShadow: 'var(--card-shadow)'
+              }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span>{item.visitorName}</span>
+                      {item.isBlacklisted && <Badge tone="danger" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>Banned</Badge>}
+                      {item.additionalGuests > 0 && <Badge tone="warning" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>+{item.additionalGuests} Guests</Badge>}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                      🏢 {item.visitorCompany || 'Independent'} · <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)` }}>{item.visitorType}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'var(--card-bg-subtle)',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  <div>👤 <strong>Host:</strong> {item.hostName} ({item.department || 'General'})</div>
+                  <div>💬 <strong>Purpose:</strong> "{item.purpose}"</div>
+                  {item.badgeNumber && item.badgeNumber !== 'N/A' && (
+                    <div>🏷️ <strong>Badge:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-indigo-accent)' }}>{item.badgeNumber}</span></div>
+                  )}
+                  <div style={{ borderTop: '1px dashed var(--card-border)', marginTop: '4px', paddingTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div>📅 Date: {new Date(item.scheduledAt).toLocaleDateString()}</div>
+                    {item.checkedInAt && <div style={{ color: 'var(--color-success)' }}>🟢 Checked In: {new Date(item.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>}
+                    {item.checkedOutAt && <div style={{ color: 'var(--color-danger)' }}>🔴 Checked Out: {new Date(item.checkedOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>}
+                    {item.deniedReason && <div style={{ color: 'var(--color-danger)' }}>⚠️ Denied Reason: {item.deniedReason}</div>}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                  <StatusIndicator status={item.status} />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileEmployeesView = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <input 
+              type="text" 
+              className="form-input" 
+              placeholder="Search host directory..." 
+              value={empSearch}
+              onChange={e => setEmpSearch(e.target.value)}
+              style={{ paddingLeft: '36px', height: '40px', fontSize: '0.85rem' }}
+            />
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+          </div>
+          {user.role === 'Admin' && (
+            <button 
+              className="btn btn-primary" 
+              onClick={() => setShowAddEmpModal(true)}
+              style={{ width: '100%', justifyContent: 'center', height: '40px', fontSize: '0.85rem' }}
+            >
+              <Plus size={16} />
+              <span>Add Employee</span>
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {filteredEmployees.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px' }}>
+              No employees found.
+            </div>
+          ) : (
+            filteredEmployees.map(e => (
+              <div key={e.id} style={{
+                background: 'var(--card-bg)',
+                border: '1.5px solid var(--card-border)',
+                borderRadius: '14px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                boxShadow: 'var(--card-shadow)'
+              }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <Avatar name={e.fullName} size="md" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{e.fullName}</span>
+                      <span style={{ fontSize: '0.75rem', background: 'rgba(99,102,241,0.1)', color: 'var(--color-indigo-accent)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                        {e.departmentName}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                      Floor {e.floor || 'N/A'} Desk Location
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'var(--card-bg-subtle)',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px'
+                }}>
+                  <div>✉️ <strong>Email:</strong> {e.email}</div>
+                  <div>📞 <strong>Phone:</strong> {e.phone}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                    <strong>Status:</strong>
+                    <span style={{ color: e.isActive ? '#4ade80' : '#ef4444', fontWeight: 600 }}>
+                      {e.isActive ? '🟢 Active' : '🔴 Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+                {user.role === 'Admin' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderTop: '1px solid var(--card-border)', paddingTop: '8px' }}>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ padding: '6px', fontSize: '0.75rem', justifyContent: 'center' }}
+                      onClick={() => startEditEmployee(e)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      style={{ padding: '6px', fontSize: '0.75rem', justifyContent: 'center' }}
+                      onClick={() => handleRemoveEmployee(e.id, e.fullName)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileBlacklistReviewView = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div>
+          <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldAlert size={18} style={{ color: 'var(--color-danger)' }} />
+            Security Flag Review Queue
+          </h3>
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+            {flaggedVisitors.length > 0
+              ? `${flaggedVisitors.length} pending reviews from security`
+              : 'All clear — no pending flags'}
+          </p>
+          {user.role === 'Admin' && (
+            <button 
+              className="btn btn-danger" 
+              style={{ width: '100%', justifyContent: 'center', marginTop: '12px', fontSize: '0.8rem', height: '36px' }} 
+              onClick={() => setShowAddBlModal(true)}
+            >
+              <Plus size={14} />
+              <span>Manually Blacklist Person</span>
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {flaggedVisitors.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '36px 16px', background: 'rgba(34,197,94,0.03)', border: '1px dashed rgba(34,197,94,0.2)', borderRadius: '12px', color: 'var(--color-success)' }}>
+              ✓ All Clear — No Pending Reviews
+            </div>
+          ) : (
+            flaggedVisitors.map(v => (
+              <div key={v.id} style={{
+                background: 'var(--card-bg)',
+                border: '1.5px solid rgba(239,68,68,0.2)',
+                borderRadius: '14px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                boxShadow: '0 4px 12px rgba(239,68,68,0.05)'
+              }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-danger)' }}>
+                    {v.fullName?.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-danger)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.fullName}</div>
+                    <div style={{ fontSize: '0.73rem', color: 'var(--color-text-secondary)' }}>{v.email || 'No email'} · {v.phone || 'No phone'}</div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(239,68,68,0.04)',
+                  border: '1px solid rgba(239,68,68,0.1)',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  fontSize: '0.78rem',
+                  color: 'var(--color-danger)',
+                  fontStyle: 'italic'
+                }}>
+                  "Reason: {v.flagReason}"
+                </div>
+
+                <div style={{
+                  fontSize: '0.72rem',
+                  color: 'var(--color-text-secondary)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px'
+                }}>
+                  <div>🛡️ Flagged by: <strong>{v.flaggedByName}</strong></div>
+                  <div>📅 Date: {v.flaggedAt ? new Date(v.flaggedAt).toLocaleString() : 'N/A'}</div>
+                  <div>📊 History: {v.visitHistory.length} recorded visits</div>
+                </div>
+
+                {user.role === 'Admin' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderTop: '1px solid var(--card-border)', paddingTop: '8px' }}>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ padding: '6px', fontSize: '0.75rem', justifyContent: 'center', color: 'var(--color-success)', borderColor: 'rgba(74,222,128,0.3)' }}
+                      onClick={() => handleDismissBlacklist(v.id)}
+                    >
+                      Allow Entry
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      style={{ padding: '6px', fontSize: '0.75rem', justifyContent: 'center' }}
+                      onClick={() => handleConfirmBlacklist(v.id, v.fullName, v.flagReason)}
+                    >
+                      Ban / Blacklist
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        <div style={{ marginTop: '20px' }}>
+          <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldAlert size={18} style={{ color: 'var(--color-danger)' }} />
+            Banned List ({confirmedBlacklisted.length})
+          </h3>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+            {confirmedBlacklisted.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 16px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                No confirmed blacklisted visitors.
+              </div>
+            ) : (
+              confirmedBlacklisted.map(v => (
+                <div key={v.id} style={{
+                  background: 'var(--card-bg)',
+                  border: '1.5px solid var(--card-border)',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  boxShadow: 'var(--card-shadow)'
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.fullName}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{v.company || 'Independent'}</div>
+                  </div>
+                  {user.role === 'Admin' && (
+                    <button
+                      className="btn btn-secondary"
+                      style={{ padding: '4px 8px', fontSize: '0.7rem', height: '28px', flexShrink: 0 }}
+                      onClick={() => handleRemoveFromBlacklist(v.id)}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileAnalyticsView = () => {
+    if (!analytics) {
+      return (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-secondary)' }}>
+          Loading analytical metrics...
+        </div>
+      );
+    }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {[
+            { label: 'Avg Dwell Time', val: `${analytics.avgVisitMinutes} min`, icon: Clock, desc: 'Lobby checked-out average' },
+            { label: 'Today Volume', val: `${analytics.todaysVisitors} guests`, icon: Users, desc: 'Today\'s lobby registrations' },
+            { label: 'Total Volume (30d)', val: `${analytics.total30d} entries`, icon: Users, desc: 'Rolling 30-day volume', color: 'var(--color-indigo-accent)' },
+            { label: 'Repeat Guest Rate', val: `${analytics.repeatRate}%`, icon: UserCheck, desc: `${analytics.repeatVisitors} repeat guests (30d)` },
+            { label: 'Banned Incidents (30d)', val: analytics.deniedEntries, icon: ShieldAlert, desc: `Today: ${analytics.deniedEntriesToday} denied`, color: 'var(--color-danger)' }
+          ].map((item, idx) => (
+            <div key={idx} style={{
+              background: 'var(--card-bg)',
+              border: '1.5px solid var(--card-border)',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxShadow: 'var(--card-shadow)'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.73rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>{item.label}</span>
+                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: item.color || 'var(--color-text-primary)', marginTop: '2px' }}>{item.val}</div>
+                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-secondary)' }}>{item.desc}</span>
+              </div>
+              <div style={{
+                background: 'var(--card-bg-subtle)',
+                padding: '8px',
+                borderRadius: '8px',
+                color: item.color || 'var(--color-indigo-accent)'
+              }}>
+                <item.icon size={18} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1.5px solid var(--card-border)',
+          borderRadius: '14px',
+          padding: '14px',
+          boxShadow: 'var(--card-shadow)'
+        }}>
+          <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '12px' }}>Visitor Volume Trend (7 Days)</h4>
+          <div style={{ width: '100%', height: '180px', fontSize: '0.7rem' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={analytics.weeklyTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="mobileColorCount" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
+                <XAxis dataKey="date" stroke="#a1a1aa" fontSize={8} />
+                <YAxis stroke="#a1a1aa" fontSize={8} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: 'var(--card-bg-solid)', borderColor: 'var(--card-border)', color: 'var(--color-text-primary)', fontSize: '0.75rem' }} />
+                <Area type="monotone" dataKey="count" stroke="#6366f1" fillOpacity={1} fill="url(#mobileColorCount)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1.5px solid var(--card-border)',
+          borderRadius: '14px',
+          padding: '14px',
+          boxShadow: 'var(--card-shadow)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
+        }}>
+          <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '8px', alignSelf: 'flex-start' }}>Visits by Department (30d)</h4>
+          <div style={{ width: '100%', height: '140px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={analytics.visitorsByDept}
+                  dataKey="count"
+                  nameKey="department"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={30}
+                  outerRadius={45}
+                  fill="#8884d8"
+                >
+                  {analytics.visitorsByDept.map((_: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ fontSize: '0.7rem' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center', marginTop: '6px', fontSize: '0.7rem' }}>
+            {analytics.visitorsByDept.map((entry: any, index: number) => (
+              <div key={entry.department} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <div style={{ width: '8px', height: '8px', background: COLORS[index % COLORS.length], borderRadius: '50%' }}></div>
+                <span>{entry.department}: {entry.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileEmployeeScheduledView = () => {
+    const todayStr = new Date().toDateString();
+    const todayScheduledVisits = employeeVisits.filter((item: any) => {
+      const schedDateStr = new Date(item.scheduledAt).toDateString();
+      const isActive = ['Expected', 'Waiting', 'CheckedIn'].includes(item.status);
+      return schedDateStr === todayStr && isActive;
+    });
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1.5px solid var(--card-border)',
+          borderRadius: '12px',
+          padding: '14px',
+          boxShadow: 'var(--card-shadow)'
+        }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Today's Scheduled Visitors</h3>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', marginTop: '2px' }}>Active visitor schedules for today.</p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {todayScheduledVisits.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px', fontSize: '0.82rem' }}>
+              No visitors scheduled for today. Pre-register guest under "Invite Future Guest".
+            </div>
+          ) : (
+            todayScheduledVisits.map((item: any) => (
+              <div key={item.id} style={{
+                background: 'var(--card-bg)',
+                border: '1.5px solid var(--card-border)',
+                borderRadius: '14px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                boxShadow: 'var(--card-shadow)'
+              }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.visitorName}
+                      </div>
+                      {item.additionalGuests > 0 && (
+                        <Badge tone="warning" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>+{item.additionalGuests}</Badge>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                      🏢 {item.visitorCompany || 'Independent'} · <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)` }}>{item.visitorType}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'var(--card-bg-subtle)',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px'
+                }}>
+                  <div>💬 <strong>Purpose:</strong> "{item.purpose}"</div>
+                  <div>⏰ <strong>Arrival:</strong> {new Date(item.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  {item.visitorEmail && <div>✉️ <strong>Email:</strong> {item.visitorEmail}</div>}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--card-border)', paddingTop: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                  <StatusIndicator status={item.status} />
+                  
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {item.status === 'Waiting' && (
+                      <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => setShowDenyModal(item.id)}>
+                        Deny
+                      </button>
+                    )}
+                    {item.status === 'Expected' && (
+                      <>
+                        <select 
+                          className="form-input" 
+                          defaultValue=""
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val) {
+                              handleDelayVisit(item.id, item.scheduledAt, parseInt(val));
+                              e.target.value = ""; 
+                            }
+                          }}
+                          style={{ padding: '4px 8px', fontSize: '0.75rem', height: '30px', width: '90px', background: 'var(--menu-item-bg)' }}
+                        >
+                          <option value="" disabled>⏳ Delay</option>
+                          <option value="15">15 Min</option>
+                          <option value="30">30 Min</option>
+                          <option value="45">45 Min</option>
+                          <option value="60">1 Hour</option>
+                        </select>
+                        <button className="btn btn-danger" style={{ padding: '6px 10px', fontSize: '0.75rem' }} onClick={() => handleEmployeeCancelVisit(item.id)}>
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileEmployeePastView = () => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const pastHostedVisits = employeeVisits.filter((item: any) => {
+      if (!item.scheduledAt) return false;
+      const schedDate = new Date(item.scheduledAt);
+      const isPast = schedDate < todayStart;
+      const isFinalized = ['CheckedOut', 'Denied', 'Cancelled', 'cancellation_pending_reception'].includes(item.status);
+      return isPast || isFinalized;
+    });
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1.5px solid var(--card-border)',
+          borderRadius: '12px',
+          padding: '14px',
+          boxShadow: 'var(--card-shadow)'
+        }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Past Hosted Visits</h3>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', marginTop: '2px' }}>Historical visitor entries hosted by you.</p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {pastHostedVisits.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px', fontSize: '0.82rem' }}>
+              No past hosted visits found.
+            </div>
+          ) : (
+            pastHostedVisits.map((item: any) => (
+              <div key={item.id} style={{
+                background: 'var(--card-bg)',
+                border: '1.5px solid var(--card-border)',
+                borderRadius: '14px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                boxShadow: 'var(--card-shadow)'
+              }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.visitorName}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                      🏢 {item.visitorCompany || 'Independent'} · <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)` }}>{item.visitorType}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'var(--card-bg-subtle)',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  fontSize: '0.78rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px'
+                }}>
+                  <div>💬 <strong>Purpose:</strong> "{item.purpose}"</div>
+                  <div>📅 <strong>Date:</strong> {new Date(item.scheduledAt).toLocaleDateString()}</div>
+                  {item.checkedInAt && <div>🟢 <strong>Checked In:</strong> {new Date(item.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>}
+                  {item.checkedOutAt && <div>🔴 <strong>Checked Out:</strong> {new Date(item.checkedOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>}
+                  {item.deniedReason && <div style={{ color: 'var(--color-danger)', marginTop: '2px' }}>⚠️ Denied Reason: {item.deniedReason}</div>}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                  <StatusIndicator status={item.status} />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileEmployeeFutureView = () => {
+    const now = new Date();
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const futureVisits = employeeVisits.filter((item: any) => {
+      if (!item.scheduledAt) return false;
+      const schedDate = new Date(item.scheduledAt);
+      const isFuture = schedDate > todayEnd;
+      const isNotFinalized = !['CheckedOut', 'Denied', 'Cancelled', 'cancellation_pending_reception'].includes(item.status);
+      return isFuture && isNotFinalized;
+    }).sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1.5px solid var(--card-border)',
+          borderRadius: '12px',
+          padding: '14px',
+          boxShadow: 'var(--card-shadow)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Upcoming Visitors</h3>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', marginTop: '2px' }}>Future visits hosted by you.</p>
+          </div>
+          <Badge tone="indigo" style={{ fontSize: '0.75rem' }}>{futureVisits.length} total</Badge>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {futureVisits.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--color-text-secondary)', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px', fontSize: '0.82rem' }}>
+              No upcoming visits scheduled. pre-register guests in the next tab.
+            </div>
+          ) : (
+            futureVisits.map((item: any) => {
+              const schedDate = new Date(item.scheduledAt);
+              const daysFromNow = Math.ceil((schedDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+              const isThisWeek = daysFromNow <= 7;
+              
+              return (
+                <div key={item.id} style={{
+                  background: 'var(--card-bg)',
+                  border: '1.5px solid var(--card-border)',
+                  borderRadius: '14px',
+                  padding: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  boxShadow: 'var(--card-shadow)'
+                }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.visitorName}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                        🏢 {item.visitorCompany || 'Independent'} · <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)` }}>{item.visitorType}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: 'var(--card-bg-subtle)',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}>
+                    <div>💬 <strong>Purpose:</strong> "{item.purpose}"</div>
+                    <div>📅 <strong>Date:</strong> {schedDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                    <div>⏰ <strong>Time:</strong> {schedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div style={{ color: daysFromNow === 1 ? 'var(--color-danger)' : isThisWeek ? 'var(--color-warning)' : 'var(--color-info)', fontWeight: 600, marginTop: '2px' }}>
+                      {daysFromNow === 1 ? '• Tomorrow' : `• In ${daysFromNow} days`}
+                    </div>
+                  </div>
+
+                  {item.remarks && (
+                    <div style={{
+                      background: 'rgba(99,102,241,0.05)',
+                      border: '1px solid rgba(99,102,241,0.15)',
+                      borderRadius: '8px',
+                      padding: '8px 10px',
+                      fontSize: '0.75rem',
+                      color: 'var(--color-indigo-accent)'
+                    }}>
+                      <strong>Remark for Security:</strong> "{item.remarks}"
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--card-border)', paddingTop: '10px' }}>
+                    <StatusIndicator status={item.status} />
+                    <button
+                      onClick={() => {
+                        setShowRemarkModal(item);
+                        setRemarkText(item.remarks || '');
+                      }}
+                      style={{
+                        background: 'var(--btn-secondary-bg)',
+                        border: '1px solid var(--btn-secondary-border)',
+                        borderRadius: '8px',
+                        padding: '6px 12px',
+                        color: 'var(--color-text-primary)',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Edit2 size={12} />
+                      {item.remarks ? 'Edit Note' : 'Add Note'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileEmployeeInviteView = () => {
+    return (
+      <div style={{
+        background: 'var(--card-bg)',
+        border: '1.5px solid var(--card-border)',
+        borderRadius: '16px',
+        padding: '16px',
+        boxShadow: 'var(--card-shadow)'
+      }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '4px' }}>Invite Expected Guest</h3>
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>Pre-register visitor credentials for a future schedule.</p>
+        
+        <form onSubmit={handlePreRegister} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Visitor Full Name *</label>
+            <input type="text" className="form-input" required value={preName} onChange={e => setPreName(e.target.value)} placeholder="Jane Doe" style={{ height: '38px', fontSize: '0.85rem' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Company / Organization</label>
+            <input type="text" className="form-input" value={preCompany} onChange={e => setPreCompany(e.target.value)} placeholder="Acme Corp" style={{ height: '38px', fontSize: '0.85rem' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Email Address</label>
+            <input type="email" className="form-input" value={preEmail} onChange={e => setPreEmail(e.target.value)} placeholder="jane@doe.com" style={{ height: '38px', fontSize: '0.85rem' }} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Phone Number</label>
+              {prePhone.trim() && (() => {
+                const clean = prePhone.trim();
+                let activePrefix = prePhoneCountryCode;
+                let checkDigits = clean.replace(/\D/g, '');
+                if (clean.startsWith('+')) {
+                  const matchedPrefix = ['+971', '+353', '+880', '+977', '+234', '+254', '+233', '+852', '+886', '+358', '+966'].find(p => clean.startsWith(p));
+                  activePrefix = matchedPrefix || clean.substring(0, 3);
+                  checkDigits = clean.replace(activePrefix, '').replace(/\D/g, '');
+                }
+                const limit = getPhoneLimit(activePrefix);
+                return (
+                  <span style={{ fontSize: '0.7rem', color: checkDigits.length !== limit ? '#ef4444' : '#10b981', fontWeight: 600 }}>
+                    {checkDigits.length}/{limit} digits
+                  </span>
+                );
+              })()}
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <select 
+                className="form-input" 
+                value={prePhoneCountryCode} 
+                onChange={e => setPrePhoneCountryCode(e.target.value)} 
+                style={{ width: '85px', background: 'var(--menu-item-bg)', padding: '6px', height: '38px', fontSize: '0.8rem' }}
+              >
+                <option value="+1">+1</option>
+                <option value="+91">+91</option>
+                <option value="+44">+44</option>
+                <option value="+61">+61</option>
+                <option value="+65">+65</option>
+                <option value="+971">+971</option>
+              </select>
+              <input 
+                type="text" 
+                className="form-input" 
+                value={prePhone} 
+                onChange={e => setPrePhone(e.target.value)} 
+                placeholder="(555) 0199" 
+                style={{ flex: 1, height: '38px', fontSize: '0.85rem' }}
+              />
+            </div>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Origin Location</label>
+            <input type="text" className="form-input" value={preLocation} onChange={e => setPreLocation(e.target.value)} placeholder="e.g. Bangalore" style={{ height: '38px', fontSize: '0.85rem' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Classification</label>
+            <select className="form-input" value={preType} onChange={(e: any) => setPreType(e.target.value)} style={{ background: 'var(--menu-item-bg)', height: '38px', fontSize: '0.85rem' }}>
+              <option value="Guest">Guest</option>
+              <option value="Vendor">Vendor</option>
+              <option value="Contractor">Contractor</option>
+              <option value="Candidate">Candidate</option>
+              <option value="VIP">VIP</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Scheduled Date &amp; Time *</label>
+            <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} style={{ height: '38px', fontSize: '0.85rem' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Purpose of Visit *</label>
+            <input type="text" className="form-input" required value={prePurpose} onChange={e => setPrePurpose(e.target.value)} placeholder="Quarterly sync" style={{ height: '38px', fontSize: '0.85rem' }} />
+          </div>
+
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', height: '40px', fontSize: '0.85rem', marginTop: '8px' }}>
+            Send Invitation &amp; Register
+          </button>
+        </form>
+      </div>
+    );
+  };
+
+  const renderMobileView = () => {
+    const menuItems = getMobileMenuItems();
+    const currentItem = menuItems.find(item => item.view === currentView) || menuItems[0];
+    
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
+        background: 'var(--bg-gradient)',
+        color: 'var(--color-text-primary)'
+      }}>
+        <style>{`
+          @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+          }
+        `}</style>
+
+        {/* Mobile Top Header */}
+        <header style={{
+          height: '60px',
+          borderBottom: '1px solid var(--card-border)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '0 16px',
+          background: 'var(--card-bg)',
+          backdropFilter: 'var(--backdrop-blur)',
+          zIndex: 100,
+          flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'linear-gradient(135deg, #c84e3c, #e05a47)',
+              borderRadius: '8px',
+              padding: '6px',
+              color: '#fff',
+              boxShadow: '0 4px 8px rgba(224, 90, 71, 0.2)'
+            }}>
+              <Building size={16} />
+            </div>
+            <span style={{ fontWeight: 700, fontSize: '1rem' }}>VMS Gateway</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              onClick={() => setDarkMode(!darkMode)}
+              style={{
+                background: 'var(--btn-secondary-bg)',
+                border: '1px solid var(--btn-secondary-border)',
+                borderRadius: '8px',
+                padding: '6px 10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--color-text-primary)'
+              }}
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+            <span style={{ fontSize: '0.75rem', background: 'var(--card-bg-subtle)', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-glass)', color: 'var(--color-indigo-accent)', fontWeight: 600 }}>
+              {user.branchName}
+            </span>
+          </div>
+        </header>
+
+        {/* Main View Area */}
+        <main style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '16px',
+          paddingBottom: '24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}>
+          
+          <div style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                background: 'var(--card-bg)',
+                border: '1.5px solid var(--card-border)',
+                borderRadius: '12px',
+                color: 'var(--color-text-primary)',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                boxShadow: 'var(--card-shadow)',
+                backdropFilter: 'var(--backdrop-blur)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ color: 'var(--indigo-primary)', display: 'flex' }}>
+                  {getViewIcon(currentView)}
+                </span>
+                <span>{currentItem?.label || "Select View"}</span>
+              </div>
+              <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>▼</span>
+            </button>
+          </div>
+
+          {currentView === 'queue' && renderMobileQueueView()}
+          {currentView === 'security_arrivals' && renderMobileSecurityArrivalsView()}
+          {currentView === 'check_invite' && renderMobileCheckInviteView()}
+          {currentView === 'security_history' && renderMobileSecurityHistoryView()}
+          {currentView === 'employees' && renderMobileEmployeesView()}
+          {currentView === 'blacklist_review' && renderMobileBlacklistReviewView()}
+          {currentView === 'analytics' && renderMobileAnalyticsView()}
+          {currentView === 'employee_scheduled' && renderMobileEmployeeScheduledView()}
+          {currentView === 'employee_past' && renderMobileEmployeePastView()}
+          {currentView === 'employee_future' && renderMobileEmployeeFutureView()}
+          {currentView === 'employee_invite' && renderMobileEmployeeInviteView()}
+
+        </main>
+
+        {/* Sticky Mobile Footer */}
+        <footer style={{
+          height: '64px',
+          borderTop: '1px solid var(--card-border)',
+          background: 'var(--card-bg)',
+          backdropFilter: 'var(--backdrop-blur)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 16px',
+          flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Avatar name={user.fullName} size="sm" online={true} />
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{user.fullName}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{user.role}</div>
+            </div>
+          </div>
+          <Button variant="danger" style={{ padding: '8px 12px', fontSize: '0.8rem', height: '36px' }} onClick={handleLogout} leftIcon={<LogOut size={12} />}>
+            Logout
+          </Button>
+        </footer>
+
+        {/* Bottom Sheet Drawer */}
+        {isMobileMenuOpen && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'flex-end',
+            animation: 'fadeIn 0.2s ease-out'
+          }} onClick={() => setIsMobileMenuOpen(false)}>
+            <div style={{
+              width: '100%',
+              background: 'var(--card-bg-solid)',
+              borderTopLeftRadius: '20px',
+              borderTopRightRadius: '20px',
+              padding: '20px 16px',
+              boxShadow: '0 -10px 25px rgba(0,0,0,0.15)',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+            }} onClick={e => e.stopPropagation()}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderBottom: '1px solid var(--card-border)',
+                paddingBottom: '12px'
+              }}>
+                <span style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--color-text-primary)' }}>Select Dashboard View</span>
+                <button onClick={() => setIsMobileMenuOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {menuItems.map(item => {
+                  const isActive = item.view === currentView;
+                  return (
+                    <button
+                      key={item.view}
+                      onClick={() => {
+                        setCurrentView(item.view);
+                        setIsMobileMenuOpen(false);
+                        if (item.view === 'employee_scheduled' || item.view === 'employee_past' || item.view === 'employee_future') {
+                          fetchEmployeeVisits();
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px 16px',
+                        borderRadius: '10px',
+                        border: isActive ? '1px solid var(--active-features-border)' : '1px solid transparent',
+                        background: isActive ? 'var(--active-features-bg)' : 'transparent',
+                        color: isActive ? 'var(--active-features-text)' : 'var(--color-text-primary)',
+                        textAlign: 'left',
+                        fontWeight: isActive ? 600 : 500,
+                        fontSize: '0.9rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <span style={{ display: 'flex', color: isActive ? 'inherit' : 'var(--indigo-primary)' }}>
+                        {getViewIcon(item.view)}
+                      </span>
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="app-layout">
-      {/* Sidebar Navigation */}
-      <nav className="sidebar">
+    <div 
+      className={isMobile ? "mobile-app-layout" : "app-layout"}
+      style={isMobile ? { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' } : undefined}
+    >
+      {isMobile ? (
+        renderMobileView()
+      ) : (
+        <>
+          {/* Sidebar Navigation */}
+          <nav className="sidebar">
         <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', borderBottom: '1px solid var(--card-border)' }}>
           <div style={{
             display: 'flex',
@@ -4913,24 +6510,28 @@ export default function App() {
 
         </div>
       </main>
+      </>
+      )}
 
       {/* MODAL: Pre-Register Guest */}
       {showPreRegModal && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ padding: isMobile ? '12px' : '0', overflowY: 'auto', zIndex: 1100 }}>
           <div className="modal-content" style={{ 
             maxWidth: '850px', 
-            width: '90%', 
+            width: isMobile ? '100%' : '90%', 
             background: 'var(--card-bg)', border: '1px solid var(--card-border)',
             boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
             borderRadius: '12px',
-            padding: '36px'
+            padding: isMobile ? '20px 16px' : '36px',
+            maxHeight: isMobile ? '85vh' : '90vh',
+            overflowY: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', borderBottom: '1px solid var(--card-border)', paddingBottom: '20px' }}>
               <div>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                <h3 style={{ fontSize: isMobile ? '1.2rem' : '1.5rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
                   {user?.role === 'Security' ? 'Register Walk-in Visitor' : 'Pre-Register Expected Guest'}
                 </h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '6px' }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '6px' }}>
                   Provide visitor credentials and allocate an internal host for the visit.
                 </p>
               </div>
@@ -4947,8 +6548,6 @@ export default function App() {
                   transition: 'background 0.2s'
                 }} 
                 onClick={() => setShowPreRegModal(false)}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--card-border)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'var(--menu-item-bg-hover)'}
               >
                 <X size={20} />
               </button>
@@ -4961,7 +6560,7 @@ export default function App() {
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Visitor credentials</span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '12px' : '24px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor Full Name *</label>
                   <input type="text" className="form-input" required value={preName} onChange={e => setPreName(e.target.value)} placeholder="Jane Doe" style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
@@ -4972,7 +6571,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '12px' : '24px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Email Address</label>
                   <input 
@@ -5056,13 +6655,13 @@ export default function App() {
                     } else {
                       finalPhoneVal = `${prePhoneCountryCode}${clean}`;
                     }
-
+ 
                     const limit = getPhoneLimit(activePrefix);
                     const isOver = checkDigits.length > limit;
                     const isUnder = checkDigits.length > 0 && checkDigits.length < limit;
                     const phoneRegex = /^\+[1-9][0-9\s\-()]{6,19}$/;
                     const isFormatInvalid = !phoneRegex.test(finalPhoneVal);
-
+ 
                     if (isOver || isUnder || isFormatInvalid) {
                       return (
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '4px', fontWeight: 500 }}>
@@ -5078,7 +6677,7 @@ export default function App() {
                   })()}
                 </div>
               </div>
-
+ 
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor's Office Location (Address / City)</label>
                 <input 
@@ -5091,14 +6690,14 @@ export default function App() {
                 />
                 <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Simple location/address to trace back origin if needed</div>
               </div>
-
+ 
               {/* SECTION 2: VISIT DETAILS */}
               <div style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '8px', marginBottom: '20px', marginTop: '32px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ color: 'var(--indigo-primary)', display: 'flex' }}><History size={18} /></span>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Visit details</span>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
+ 
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '12px' : '24px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor Classification</label>
                   <select className="form-input" value={preType} onChange={(e: any) => setPreType(e.target.value)} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
@@ -5114,8 +6713,8 @@ export default function App() {
                   <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
                 </div>
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+ 
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: isMobile ? '12px' : '24px', marginBottom: '32px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Filter by Dept</label>
                   <select className="form-input" value={preRegDeptFilter} onChange={e => setPreRegDeptFilter(e.target.value)} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
@@ -5139,7 +6738,7 @@ export default function App() {
                   <input type="text" className="form-input" required value={prePurpose} onChange={e => setPrePurpose(e.target.value)} placeholder="Quarterly sync" style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
                 </div>
               </div>
-
+ 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid var(--card-border)', paddingTop: '24px' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowPreRegModal(false)} style={{ padding: '12px 32px', fontSize: '0.9rem' }}>Cancel</button>
                 <button type="submit" className="btn btn-primary" style={{ padding: '12px 36px', fontSize: '0.9rem', background: 'linear-gradient(135deg, var(--indigo-primary), var(--indigo-secondary))', border: 'none', color: '#fff' }}>
@@ -5859,9 +7458,9 @@ export default function App() {
           top: 0, 
           right: 0, 
           bottom: 0, 
-          width: '420px', 
+          width: isMobile ? '100%' : '420px', 
           background: 'var(--card-bg-solid)', 
-          borderLeft: '1px solid var(--card-border)', 
+          borderLeft: isMobile ? 'none' : '1px solid var(--card-border)', 
           boxShadow: 'var(--card-shadow)', 
           zIndex: 9000, 
           display: 'flex', 

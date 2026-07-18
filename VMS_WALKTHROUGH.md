@@ -6,14 +6,16 @@ This guide describes how to run the Visitor Management System locally, its core 
 
 ## 1. How to Run the Application Locally
 
-The VMS application is structured as a **Turborepo monorepo** containing two main workspace applications:
-1. `dashboard-ui` (Vite + React frontend running on port `5173`)
+The VMS application is structured as a **Turborepo monorepo** containing the following workspace components:
+1. `dashboard-ui` (Vite + React frontend running on port `3000`)
 2. `api-server` (Express backend running on port `3001` - optional, as the dashboard connects directly to Supabase via client-side API)
+3. `android-app` (Capacitor Android wrapper to compile and build the Android application)
 
 ### 1.1 Prerequisites
 Ensure you have the following installed:
 - **Node.js** (v18 or higher)
 - **npm** or **yarn**
+- **Android Studio** (for the Android application wrapper)
 
 ### 1.2 Running Development Servers
 From the root directory, execute:
@@ -21,7 +23,7 @@ From the root directory, execute:
 npm run dev
 ```
 This runs the Vite development server for the `dashboard-ui`.
-- **Frontend Dashboard Address:** [http://localhost:5173](http://localhost:5173)
+- **Frontend Dashboard Address:** [http://localhost:3000](http://localhost:3000)
 
 ---
 
@@ -89,3 +91,18 @@ sequenceDiagram
    - The dashboard monitors mouse movements, key presses, and clicks.
    - If inactive for **25 minutes**, a glassmorphic warning modal prompts the user.
    - If no activity is detected by **30 minutes**, the user is automatically logged out.
+
+---
+
+## 4. Running the Android Application Wrapper
+
+To build and run the Android app without touching the web codebase:
+1. **Sync and copy assets**:
+   ```bash
+   npm run android:sync --workspace=vms-android
+   ```
+2. **Open the project in Android Studio**:
+   ```bash
+   npm run android:open --workspace=vms-android
+   ```
+3. Run the project on your emulator/device directly from Android Studio. Detailed setup and options can be found in the [Android README](file:///c:/Users/Div/Desktop/ANTIGRAVITY/VMS_1.0/android-app/README.md).

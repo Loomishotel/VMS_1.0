@@ -12,8 +12,8 @@
 | **Status** | **Approved / Active** |
 | **Created Date** | July 15, 2026 |
 | **Version** | `1.0.0` |
-| **Target Platforms** | Web (Visitor Kiosk, Host Portal, Security Desk) |
-| **Workspace Architecture** | Turborepo Monorepo (React Frontend, Express Backend, Prisma DB Client) |
+| **Target Platforms** | Web (Visitor Kiosk, Host Portal, Security Desk) & Android Mobile App |
+| **Workspace Architecture** | Turborepo Monorepo (React Frontend, Express Backend, Prisma DB Client, Capacitor Android Wrapper) |
 
 ---
 
@@ -55,6 +55,7 @@ Visitor_Mng_Sys/ (Monorepo Root)
 ├── packages/
 │   ├── database/             # Prisma Schema, Database Client, and Migrations
 │   └── types/                # Shared Domain and Database Type Definitions
+└── android-app/             # Capacitor Wrapper for Android Mobile Application
 ```
 
 ### 4.1 Technology Stack Details
