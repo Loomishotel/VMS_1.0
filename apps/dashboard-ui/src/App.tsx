@@ -12,6 +12,7 @@ import {
   LogOut,
   AlertOctagon,
   CheckCircle,
+  XCircle,
   X,
   History,
   User,
@@ -38,6 +39,7 @@ import {
   Bar
 } from 'recharts';
 import { supabase } from './supabaseClient';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 const BACKEND_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -455,9 +457,13 @@ export default function App() {
 
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [realtimeNotification, setRealtimeNotification] = useState<{
-    type: 'arrived' | 'delay';
+    type: 'arrived' | 'delay' | 'blacklisted_arrival' | 'unblock_request' | 'unblock_approved' | 'unblock_denied';
     visitorName: string;
+    visitorId?: string;
+    visitId?: string;
     hostName?: string;
+    targetHostId?: string;
+    photoUrl?: string;
     delayMinutes?: number;
     newTime?: string;
   } | null>(null);
@@ -520,7 +526,7 @@ export default function App() {
 
   // Global Page States
   const [loading, setLoading] = useState(false);
-  const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error' | 'warning', title?: string, text: string } | null>(null);
 
   // Queue Data States
   const [queue, setQueue] = useState<any[]>([]);
@@ -531,6 +537,11 @@ export default function App() {
   const [denyReason, setDeniedReason] = useState('');
   const [showPassModal, setShowPassModal] = useState<any | null>(null); // holds printed pass data
   const [showCheckInPhotoModal, setShowCheckInPhotoModal] = useState<string | null>(null); // holds visitId
+  const [showArrivalPhotoModal, setShowArrivalPhotoModal] = useState<string | null>(null); // holds visitId for mobile arrival photo
+  const [showLogoutConfirmModal, setShowLogoutConfirmModal] = useState<boolean>(false); // mobile logout confirmation
+  const [mobileHistory, setMobileHistory] = useState<View[]>([]); // navigation history stack for mobile swipe back
+  const touchStartPosRef = useRef<{ x: number, y: number } | null>(null);
+  const [showSwipeBackIndicator, setShowSwipeBackIndicator] = useState<boolean>(false);
   const [completeEmail, setCompleteEmail] = useState('');
   const [completePhone, setCompletePhone] = useState('');
   const [completePhoneCountryCode, setCompletePhoneCountryCode] = useState('+1');
@@ -538,8 +549,17 @@ export default function App() {
   // Camera states
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const [showFullscreenVisitorPhoto, setShowFullscreenVisitorPhoto] = useState<string | null>(null);
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null); // Request lock to prevent double clicks
+  const [isNetworkSlow, setIsNetworkSlow] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Mobile Pull to Refresh states
+  const [pullY, setPullY] = useState<number>(0);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const touchStartYRef = useRef<number>(0);
 
   // Future invitations for Check Invitation
   const [futureInvitations, setFutureInvitations] = useState<any[]>([]);
@@ -553,16 +573,269 @@ export default function App() {
   const [selectedInviteDetails, setSelectedInviteDetails] = useState<any | null>(null); // holds invitation/visit record
   const [detailPanelTab, setDetailPanelTab] = useState<'general' | 'host' | 'remarks'>('general');
 
-  // Camera helper functions
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 320, facingMode: 'user' } });
-      streamRef.current = stream;
-      setIsCameraActive(true);
-    } catch (err) {
-      console.error('Error accessing camera:', err);
-      setAlertMessage({ type: 'error', text: 'Unable to access device camera. Please check camera permissions.' });
+  // Auto-dismiss alert messages and trigger mobile push notification
+  useEffect(() => {
+    if (alertMessage) {
+      if (isMobile) {
+        const defaultTitle = alertMessage.type === 'success' 
+          ? 'Operation Successful' 
+          : alertMessage.type === 'warning'
+          ? 'System Advisory'
+          : 'Security Alert';
+        sendMobileDeviceNotification(alertMessage.title || defaultTitle, alertMessage.text, '/123.png');
+      }
+
+      const displayTime = alertMessage.type === 'success' ? 2500 : 5000;
+      const timer = setTimeout(() => {
+        setAlertMessage(null);
+      }, displayTime);
+      return () => clearTimeout(timer);
     }
+    return undefined;
+  }, [alertMessage, isMobile]);
+
+  // Online / Offline Network Listener
+  useEffect(() => {
+    const handleOffline = () => {
+      setAlertMessage({
+        type: 'error',
+        text: '⚠️ You are currently offline. Please wait a moment while connection restores.'
+      });
+    };
+    const handleOnline = () => {
+      setAlertMessage({
+        type: 'success',
+        text: '✅ Network connection restored!'
+      });
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
+
+  // Pull-to-refresh Gesture Handlers for Mobile
+  const handleTouchStartPull = (e: React.TouchEvent) => {
+    if (window.scrollY === 0) {
+      touchStartYRef.current = e.touches[0].clientY;
+    } else {
+      touchStartYRef.current = 0;
+    }
+  };
+
+  const handleTouchMovePull = (e: React.TouchEvent) => {
+    if (touchStartYRef.current === 0) return;
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - touchStartYRef.current;
+    if (diff > 0 && diff < 120) {
+      setPullY(diff);
+    }
+  };
+
+  const handleTouchEndPull = async () => {
+    if (pullY > 60 && !isRefreshing) {
+      setIsRefreshing(true);
+      setPullY(0);
+      try {
+        await Promise.all([
+          fetchQueue(true),
+          fetchBlacklistReview(),
+          fetchEmployeeVisits(),
+          fetchFutureInvitations()
+        ]);
+        setAlertMessage({ type: 'success', text: 'Data refreshed successfully! 🔄' });
+      } catch (err) {
+        console.error('Refresh error:', err);
+      } finally {
+        setIsRefreshing(false);
+      }
+    } else {
+      setPullY(0);
+    }
+    touchStartYRef.current = 0;
+  };
+
+  // Mobile Network Watchdog & Request Lock Wrapper (Prevents duplicate requests when network is slow)
+  const executeWithNetworkWatchdog = async <T,>(actionId: string, actionFn: () => Promise<T>): Promise<T | undefined> => {
+    if (pendingActionId) return undefined; // Prevent duplicate clicks while request is in flight
+    setPendingActionId(actionId);
+    setIsNetworkSlow(false);
+
+    // Watchdog timer: if request takes > 2.5s, warn user network is slow
+    const slowTimer = setTimeout(() => {
+      setIsNetworkSlow(true);
+      setAlertMessage({
+        type: 'warning',
+        text: '⚠️ Network connection is slow. Please wait a moment while we process your request...'
+      });
+    }, 2500);
+
+    try {
+      const result = await actionFn();
+      clearTimeout(slowTimer);
+      setIsNetworkSlow(false);
+      setPendingActionId(null);
+      return result;
+    } catch (err: any) {
+      clearTimeout(slowTimer);
+      setIsNetworkSlow(false);
+      setPendingActionId(null);
+      console.error('Mobile network action error:', err);
+      setAlertMessage({
+        type: 'error',
+        text: '⚠️ Network error occurred. Please check your connection and try again.'
+      });
+      return undefined;
+    }
+  };
+
+  const handleMobileGoBack = () => {
+    // 1. Close active modals / bottom drawers first
+    if (showArrivalPhotoModal) { setShowArrivalPhotoModal(null); stopCamera(); return; }
+    if (showCheckInPhotoModal) { setShowCheckInPhotoModal(null); stopCamera(); return; }
+    if (showLogoutConfirmModal) { setShowLogoutConfirmModal(false); return; }
+    if (showPreRegModal) { setShowPreRegModal(false); return; }
+    if (showDenyModal) { setShowDenyModal(null); return; }
+    if (selectedInviteDetails) { setSelectedInviteDetails(null); return; }
+    if (isMobileMenuOpen) { setIsMobileMenuOpen(false); return; }
+
+    // 2. Navigate back to previous screen in history stack
+    if (mobileHistory.length > 0) {
+      const prevView = mobileHistory[mobileHistory.length - 1];
+      setMobileHistory(prev => prev.slice(0, -1));
+      setCurrentView(prevView);
+
+      setShowSwipeBackIndicator(true);
+      setTimeout(() => setShowSwipeBackIndicator(false), 700);
+    }
+  };
+
+  const navigateMobileView = (newView: View) => {
+    if (newView !== currentView) {
+      setMobileHistory(prev => [...prev, currentView]);
+      setCurrentView(newView);
+    }
+  };
+
+  // Mobile Native System Tray & Push Notification helper
+  const sendMobileDeviceNotification = async (title: string, body: string, iconUrl?: string) => {
+    // 1. Capacitor Native Android Local Notification (System Tray Push Notification)
+    try {
+      const isCapacitorNative = typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor.isNativePlatform();
+      if (isCapacitorNative || isMobile) {
+        const perm = await LocalNotifications.checkPermissions();
+        if (perm.display !== 'granted') {
+          await LocalNotifications.requestPermissions();
+        }
+
+        try {
+          await LocalNotifications.createChannel({
+            id: 'vms_alerts',
+            name: 'VMS Security Alerts',
+            description: 'VMS mobile alerts for visitor arrivals, blacklist events, and unblock approvals',
+            importance: 5,
+            visibility: 1,
+            vibration: true
+          });
+        } catch (chErr) {}
+
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title: title,
+              body: body,
+              id: Math.floor(Math.random() * 1000000),
+              channelId: 'vms_alerts',
+              schedule: { at: new Date(Date.now() + 50) },
+              smallIcon: 'ic_stat_icon',
+              extra: null
+            }
+          ]
+        });
+      }
+    } catch (err) {
+      console.log('Native LocalNotifications fallback to Web Notification API:', err);
+    }
+
+    // 2. Web Notification API Fallback
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        try {
+          new Notification(title, {
+            body,
+            icon: iconUrl || '/123.png',
+            badge: '/123.png',
+            tag: 'vms-mobile-notification'
+          });
+        } catch (e) {
+          console.error('Mobile notification error:', e);
+        }
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            try {
+              new Notification(title, {
+                body,
+                icon: iconUrl || '/123.png',
+                badge: '/123.png'
+              });
+            } catch (e) {}
+          }
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (isMobile) {
+      try {
+        LocalNotifications.requestPermissions();
+      } catch (e) {}
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+  }, [isMobile]);
+
+  const startCamera = async (overrideFacingMode?: 'user' | 'environment') => {
+    const currentFacing = overrideFacingMode || facingMode;
+    try {
+      const constraints: MediaStreamConstraints = { 
+        video: isMobile 
+          ? { facingMode: { ideal: currentFacing }, width: { ideal: 640 }, height: { ideal: 640 } } 
+          : { width: 320, height: 320, facingMode: currentFacing } 
+      };
+      
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = stream;
+        setIsCameraActive(true);
+      } else {
+        throw new Error('Camera device API not available.');
+      }
+    } catch (err: any) {
+      console.error('Error accessing camera:', err);
+      try {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        streamRef.current = fallbackStream;
+        setIsCameraActive(true);
+      } catch (fallbackErr) {
+        setAlertMessage({ type: 'error', text: 'Camera permission denied or camera device unavailable. Please allow camera access in your device settings.' });
+      }
+    }
+  };
+
+  const toggleCameraFacingMode = async () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    stopCamera();
+    setTimeout(() => {
+      startCamera(nextMode);
+    }, 150);
   };
 
   const stopCamera = () => {
@@ -589,8 +862,14 @@ export default function App() {
   };
 
   const triggerCheckIn = (visitId: string) => {
+    const v = queue.find(item => item.id === visitId);
+    // If visitor photo was already captured (e.g. upon arrival), reuse it for the pass without asking twice
+    if (v && (v.visitorPhoto || v.photoUrl)) {
+      handleApproveCheckIn(visitId);
+      return;
+    }
+
     if (user?.role === 'Security' || user?.role === 'Receptionist') {
-      const v = queue.find(item => item.id === visitId);
       if (v) {
         setCompleteEmail(v.visitorEmail || '');
         const phoneVal = v.visitorPhone || '';
@@ -646,6 +925,13 @@ export default function App() {
       setCapturedPhoto(null);
     }
   }, [showCheckInPhotoModal]);
+
+  useEffect(() => {
+    if (!showArrivalPhotoModal) {
+      stopCamera();
+      setCapturedPhoto(null);
+    }
+  }, [showArrivalPhotoModal]);
 
   // Past records states
   const [pastRecords, setPastRecords] = useState<any[]>([]);
@@ -873,15 +1159,23 @@ export default function App() {
                 try {
                   const { data: visData } = await supabase
                     .from('Visitor')
-                    .select('fullName')
+                    .select('fullName, photoUrl')
                     .eq('id', newRecord.visitorId)
                     .single();
                   
                   if (visData) {
                     setRealtimeNotification({
                       type: 'arrived',
-                      visitorName: visData.fullName
+                      visitorName: visData.fullName,
+                      photoUrl: visData.photoUrl || undefined
                     });
+                    if (isMobile) {
+                      sendMobileDeviceNotification(
+                        'Visitor Arrived!',
+                        `${visData.fullName} has just arrived at the lobby.`,
+                        visData.photoUrl || '/123.png'
+                      );
+                    }
                   }
                 } catch (err) {
                   console.error('Error fetching visitor name for notification:', err);
@@ -944,6 +1238,80 @@ export default function App() {
       supabase.removeChannel(channel);
     };
   }, [currentView, token, user, employeeId]);
+
+  // Global Broadcast Channel for Realtime Unblock Workflow & Notifications
+  useEffect(() => {
+    if (!token || !user) return;
+
+    const channel = supabase.channel('vms_global_broadcast');
+
+    channel
+      .on('broadcast', { event: 'blacklisted_arrived' }, (payload: any) => {
+        const p = payload.payload;
+        if (user.role === 'Employee' && employeeId && employeeId === p.hostEmployeeId) {
+          setRealtimeNotification({
+            type: 'blacklisted_arrival' as any,
+            visitorName: p.visitorName,
+            visitorId: p.visitorId,
+            visitId: p.visitId,
+            hostName: p.hostName
+          });
+          if (isMobile) {
+            sendMobileDeviceNotification(
+              '🚨 Blacklisted Visitor Arrived!',
+              `${p.visitorName} is at the security gate and is currently blacklisted.`,
+              '/123.png'
+            );
+          }
+        }
+      })
+      .on('broadcast', { event: 'unblock_request' }, (payload: any) => {
+        const p = payload.payload;
+        if (user.role === 'Admin') {
+          setRealtimeNotification({
+            type: 'unblock_request' as any,
+            visitorName: p.visitorName,
+            visitorId: p.visitorId,
+            visitId: p.visitId,
+            hostName: p.hostName,
+            targetHostId: p.hostEmployeeId
+          });
+          if (isMobile) {
+            sendMobileDeviceNotification(
+              '🔓 Unblock Visitor Request',
+              `Host ${p.hostName} requested to unblock visitor ${p.visitorName}.`,
+              '/123.png'
+            );
+          }
+        }
+      })
+      .on('broadcast', { event: 'unblock_decision' }, (payload: any) => {
+        const p = payload.payload;
+        const isTargetHost = user.role === 'Employee' && employeeId === p.targetHostId;
+        const isSecurity = user.role === 'Security';
+
+        if (isTargetHost || isSecurity) {
+          if (p.decision === 'approved') {
+            setRealtimeNotification({
+              type: 'unblock_approved' as any,
+              visitorName: p.visitorName
+            });
+            fetchQueue(true);
+            fetchEmployeeVisits();
+          } else if (p.decision === 'denied') {
+            setRealtimeNotification({
+              type: 'unblock_denied' as any,
+              visitorName: p.visitorName
+            });
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [token, user, employeeId, isMobile]);
 
   const formatTime = (secs: number) => {
     const mins = Math.floor(secs / 60);
@@ -1578,7 +1946,7 @@ export default function App() {
   };
 
   const handleSecurityMarkArrived = async (visitId: string) => {
-    try {
+    return executeWithNetworkWatchdog(`arrive_${visitId}`, async () => {
       // Safety check: ensure visit is scheduled for today
       const { data: visit, error: fetchErr } = await supabase
         .from('Visit')
@@ -1608,9 +1976,117 @@ export default function App() {
       
       if (currentView === 'security_arrivals') fetchQueue();
       if (currentView === 'check_invite') fetchFutureInvitations();
-    } catch (err: any) {
-      setAlertMessage({ type: 'error', text: err.message || 'Failed to update status' });
-    }
+    });
+  };
+
+  // Security Notify Host when Blacklisted Visitor Arrives
+  const handleSecurityNotifyHostBlacklisted = async (item: any) => {
+    return executeWithNetworkWatchdog(`notify_host_${item.id}`, async () => {
+      const channel = supabase.channel('vms_global_broadcast');
+      await channel.send({
+        type: 'broadcast',
+        event: 'blacklisted_arrived',
+        payload: {
+          visitId: item.id,
+          visitorId: item.visitorId,
+          visitorName: item.visitorName,
+          hostEmployeeId: item.hostId,
+          hostName: item.hostName
+        }
+      });
+
+      await supabase.from('Notification').insert({
+        recipientVisitorId: item.visitorId,
+        channel: 'InApp',
+        message: `🚨 Blacklisted Visitor ${item.visitorName} is at the security gate.`,
+        status: 'Queued'
+      });
+
+      setAlertMessage({
+        type: 'success',
+        text: `Host ${item.hostName} notified about blacklisted visitor ${item.visitorName}.`
+      });
+    });
+  };
+
+  // Host Request Admin to Unblock Visitor
+  const handleHostRequestUnblock = async (visitId: string, visitorId: string, visitorName: string) => {
+    return executeWithNetworkWatchdog(`request_unblock_${visitId}`, async () => {
+      const channel = supabase.channel('vms_global_broadcast');
+      await channel.send({
+        type: 'broadcast',
+        event: 'unblock_request',
+        payload: {
+          visitId,
+          visitorId,
+          visitorName,
+          hostEmployeeId: employeeId,
+          hostName: user?.fullName || 'Host'
+        }
+      });
+
+      setRealtimeNotification(null);
+      setAlertMessage({
+        type: 'success',
+        text: `Request sent to Admin to unblock ${visitorName}.`
+      });
+    });
+  };
+
+  // Admin Decisions on Unblock Request
+  const handleAdminApproveUnblock = async (visitorId: string, visitorName: string, targetHostId?: string) => {
+    return executeWithNetworkWatchdog(`approve_unblock_${visitorId}`, async () => {
+      const { data: branchUsers } = await supabase.from('User').select('id').eq('branchId', user.branchId);
+      const branchUserIds = (branchUsers || []).map((u: any) => u.id);
+
+      await supabase.from('Blacklist').delete().eq('visitorId', visitorId).in('addedByUserId', branchUserIds);
+      await supabase.from('Visitor').update({ isBlacklisted: false, blacklistFlag: 'none' }).eq('id', visitorId);
+
+      await supabase.from('AuditLog').insert({
+        actorUserId: user.id,
+        action: 'ADMIN_UNBLOCK_VISITOR',
+        entityType: 'Visitor',
+        entityId: visitorId
+      });
+
+      const channel = supabase.channel('vms_global_broadcast');
+      await channel.send({
+        type: 'broadcast',
+        event: 'unblock_decision',
+        payload: {
+          decision: 'approved',
+          visitorName,
+          targetHostId
+        }
+      });
+
+      setRealtimeNotification(null);
+      setAlertMessage({ type: 'success', text: `Visitor ${visitorName} unblocked successfully!` });
+
+      fetchQueue();
+      fetchBlacklistReview();
+    });
+  };
+
+  const handleAdminDenyUnblock = async (visitorId: string, visitorName: string, targetHostId?: string) => {
+    return executeWithNetworkWatchdog(`deny_unblock_${visitorId}`, async () => {
+      const channel = supabase.channel('vms_global_broadcast');
+      await channel.send({
+        type: 'broadcast',
+        event: 'unblock_decision',
+        payload: {
+          decision: 'denied',
+          visitorName,
+          targetHostId
+        }
+      });
+
+      setRealtimeNotification(null);
+      setAlertMessage({
+        type: 'error',
+        text: `Unblock request for ${visitorName} denied. Entry remains restricted.`
+      });
+    });
   };
 
   const handleUpdateRemark = async () => {
@@ -2423,7 +2899,7 @@ export default function App() {
     completedEmail?: string | null,
     completedPhone?: string | null
   ) => {
-    try {
+    return executeWithNetworkWatchdog(`checkin_${visitId}`, async () => {
       // Fetch full visit details for the pass before updating
       const { data: visitData, error: fetchErr } = await supabase
         .from('Visit')
@@ -2511,9 +2987,7 @@ export default function App() {
       fetchEmployeeVisits();
       if (currentView === 'check_invite') fetchFutureInvitations();
       if (currentView === 'security_history') fetchPastRecords();
-    } catch (err: any) {
-      setAlertMessage({ type: 'error', text: err.message || 'Check-in failed' });
-    }
+    });
   };
 
   // Deny Check-In
@@ -2521,7 +2995,7 @@ export default function App() {
     e.preventDefault();
     if (!showDenyModal) return;
 
-    try {
+    return executeWithNetworkWatchdog(`deny_${showDenyModal}`, async () => {
       const { error: updateErr } = await supabase
         .from('Visit')
         .update({
@@ -2547,14 +3021,12 @@ export default function App() {
       fetchEmployeeVisits();
       if (currentView === 'check_invite') fetchFutureInvitations();
       if (currentView === 'security_history') fetchPastRecords();
-    } catch (err: any) {
-      setAlertMessage({ type: 'error', text: err.message || 'Failure to deny visit' });
-    }
+    });
   };
 
   // Execute manual Check-Out
   const handleCheckOut = async (visitId: string) => {
-    try {
+    return executeWithNetworkWatchdog(`checkout_${visitId}`, async () => {
       const { data: visit, error: fetchErr } = await supabase
         .from('Visit')
         .select('visitorId, Employee(fullName)')
@@ -2585,9 +3057,7 @@ export default function App() {
       setAlertMessage({ type: 'success', text: 'Visitor checked out successfully.' });
       fetchQueue();
       if (currentView === 'security_history') fetchPastRecords();
-    } catch (err: any) {
-      setAlertMessage({ type: 'error', text: err.message || 'Checkout failed' });
-    }
+    });
   };
 
   // Add Employee Host
@@ -3080,18 +3550,74 @@ export default function App() {
 
   const renderMobileSecurityArrivalsView = () => {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div 
+        onTouchStart={handleTouchStartPull}
+        onTouchMove={handleTouchMovePull}
+        onTouchEnd={handleTouchEndPull}
+        style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '100vh' }}
+      >
+        {(pullY > 0 || isRefreshing) && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '10px',
+            background: 'var(--card-bg-subtle)',
+            borderRadius: '10px',
+            fontSize: '0.82rem',
+            fontWeight: 600,
+            color: 'var(--color-indigo-accent)',
+            transition: 'all 0.2s ease-out'
+          }}>
+            <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+            <span>{isRefreshing ? 'Refreshing data...' : pullY > 60 ? 'Release to refresh' : 'Pull down to refresh ⬇️'}</span>
+          </div>
+        )}
+
+        {isNetworkSlow && (
+          <div style={{
+            background: 'rgba(245, 158, 11, 0.15)',
+            border: '1px solid #f59e0b',
+            color: '#f59e0b',
+            padding: '10px 14px',
+            borderRadius: '10px',
+            fontSize: '0.82rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <Loader2 size={16} className="animate-spin" /> Network connection is slow. Please wait a moment...
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ position: 'relative', width: '100%' }}>
-            <input 
-              type="text" 
-              className="form-input" 
-              placeholder="Search today's arrivals..." 
-              value={queueSearch}
-              onChange={e => setQueueSearch(e.target.value)}
-              style={{ paddingLeft: '36px', height: '40px', fontSize: '0.85rem' }}
-            />
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+          <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="Search today's arrivals..." 
+                value={queueSearch}
+                onChange={e => setQueueSearch(e.target.value)}
+                style={{ paddingLeft: '36px', height: '40px', fontSize: '0.85rem', width: '100%' }}
+              />
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={async () => {
+                setIsRefreshing(true);
+                await Promise.all([fetchQueue(true), fetchBlacklistReview(), fetchEmployeeVisits()]);
+                setIsRefreshing(false);
+                setAlertMessage({ type: 'success', text: 'Data refreshed! 🔄' });
+              }}
+              style={{ padding: '0 12px', height: '40px' }}
+              title="Refresh Queue Data"
+            >
+              <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+            </button>
           </div>
           <button 
             className="btn btn-primary" 
@@ -3170,8 +3696,13 @@ export default function App() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
                       {item.status === 'Expected' && (
                         <>
-                          <button className="btn btn-primary" style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} onClick={() => handleSecurityMarkArrived(item.id)}>
-                            Arrived
+                          <button 
+                            className="btn btn-primary" 
+                            disabled={!!pendingActionId}
+                            style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} 
+                            onClick={() => executeWithNetworkWatchdog(`arrive_${item.id}`, async () => { setShowArrivalPhotoModal(item.id); })}
+                          >
+                            {pendingActionId === `arrive_${item.id}` ? <Loader2 size={14} className="animate-spin" /> : 'Arrived'}
                           </button>
                           <button className="btn btn-danger" style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} onClick={() => setShowDenyModal(item.id)}>
                             Deny Entry
@@ -3180,8 +3711,13 @@ export default function App() {
                       )}
                       {item.status === 'Waiting' && (
                         <>
-                          <button className="btn btn-primary" style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} onClick={() => triggerCheckIn(item.id)}>
-                            Check In
+                          <button 
+                            className="btn btn-primary" 
+                            disabled={!!pendingActionId}
+                            style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} 
+                            onClick={() => executeWithNetworkWatchdog(`checkin_${item.id}`, async () => { triggerCheckIn(item.id); })}
+                          >
+                            {pendingActionId === `checkin_${item.id}` ? <Loader2 size={14} className="animate-spin" /> : 'Check In'}
                           </button>
                           <button className="btn btn-danger" style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} onClick={() => setShowDenyModal(item.id)}>
                             Deny Entry
@@ -3189,21 +3725,41 @@ export default function App() {
                         </>
                       )}
                       {item.status === 'CheckedIn' && (
-                        <button className="btn btn-danger" style={{ gridColumn: 'span 2', padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} onClick={() => handleCheckOut(item.id)}>
-                          Check Out
+                        <button 
+                          className="btn btn-danger" 
+                          disabled={!!pendingActionId}
+                          style={{ gridColumn: 'span 2', padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} 
+                          onClick={() => handleCheckOut(item.id)}
+                        >
+                          {pendingActionId === `checkout_${item.id}` ? <Loader2 size={14} className="animate-spin" /> : 'Check Out'}
                         </button>
                       )}
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                    <button 
-                      className="btn btn-secondary" 
-                      style={{ flex: 1, padding: '6px 10px', fontSize: '0.75rem', justifyContent: 'center', borderColor: '#ef4444', color: 'var(--color-danger)' }} 
-                      onClick={() => setShowFlagBlacklistModal(item.visitorId)}
-                    >
-                      Flag Blacklist
-                    </button>
+                  <div style={{ display: 'flex', gap: '8px', width: '100%', marginTop: '6px' }}>
+                    {!item.isBlacklisted ? (
+                      <button 
+                        className="btn btn-secondary" 
+                        style={{ flex: 1, padding: '6px 10px', fontSize: '0.75rem', justifyContent: 'center', borderColor: '#ef4444', color: 'var(--color-danger)' }} 
+                        onClick={() => setShowFlagBlacklistModal(item.visitorId)}
+                      >
+                        Flag Blacklist
+                      </button>
+                    ) : (
+                      <button 
+                        className="btn btn-warning" 
+                        disabled={!!pendingActionId}
+                        style={{ flex: 1, padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center', fontWeight: 600 }} 
+                        onClick={() => handleSecurityNotifyHostBlacklisted(item)}
+                      >
+                        {pendingActionId === `notify_host_${item.id}` ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          '🔔 Notify Host'
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3309,7 +3865,7 @@ export default function App() {
                     
                     <div style={{ display: 'flex', gap: '6px' }}>
                       {!isBl && ['Expected', 'Waiting'].includes(item.status) && isToday && (
-                        <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem' }} onClick={() => handleSecurityMarkArrived(item.id)}>
+                        <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem' }} onClick={() => setShowArrivalPhotoModal(item.id)}>
                           Mark Arrived
                         </button>
                       )}
@@ -4225,15 +4781,60 @@ export default function App() {
     const currentItem = menuItems.find(item => item.view === currentView) || menuItems[0];
     
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        width: '100vw',
-        overflow: 'hidden',
-        background: 'var(--bg-gradient)',
-        color: 'var(--color-text-primary)'
-      }}>
+      <div 
+        className="mobile-app-layout"
+        onTouchStart={(e) => {
+          if (!isMobile) return;
+          const touch = e.touches[0];
+          touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+        }}
+        onTouchEnd={(e) => {
+          if (!isMobile || !touchStartPosRef.current) return;
+          const touch = e.changedTouches[0];
+          const deltaX = touch.clientX - touchStartPosRef.current.x;
+          const deltaY = touch.clientY - touchStartPosRef.current.y;
+          const startX = touchStartPosRef.current.x;
+          touchStartPosRef.current = null;
+
+          const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+          if (['input', 'textarea', 'select'].includes(targetTag)) return;
+
+          // Swipe right from left portion of screen to trigger Go Back
+          if (deltaX > 70 && Math.abs(deltaY) < 70 && startX < window.innerWidth * 0.5) {
+            handleMobileGoBack();
+          }
+        }}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          width: '100vw',
+          overflow: 'hidden',
+          background: 'var(--bg-gradient)',
+          color: 'var(--color-text-primary)'
+        }}
+      >
+        {showSwipeBackIndicator && (
+          <div style={{
+            position: 'fixed',
+            top: '70px',
+            left: '16px',
+            zIndex: 99999,
+            background: 'rgba(0, 0, 0, 0.85)',
+            color: '#ffffff',
+            padding: '6px 14px',
+            borderRadius: '20px',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <span>◀</span> Going Back
+          </div>
+        )}
         <style>{`
           @keyframes slideUp {
             from { transform: translateY(100%); }
@@ -4254,19 +4855,17 @@ export default function App() {
           zIndex: 100,
           flexShrink: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'linear-gradient(135deg, #c84e3c, #e05a47)',
-              borderRadius: '8px',
-              padding: '6px',
-              color: '#fff',
-              boxShadow: '0 4px 8px rgba(224, 90, 71, 0.2)'
-            }}>
-              <Building size={16} />
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img 
+              src="/123.png" 
+              alt="VMS Mobile Logo" 
+              style={{ 
+                height: '32px', 
+                width: 'auto', 
+                objectFit: 'contain',
+                borderRadius: '6px'
+              }} 
+            />
             <span style={{ fontWeight: 700, fontSize: '1rem' }}>VMS Gateway</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4366,7 +4965,7 @@ export default function App() {
               <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{user.role}</div>
             </div>
           </div>
-          <Button variant="danger" style={{ padding: '8px 12px', fontSize: '0.8rem', height: '36px' }} onClick={handleLogout} leftIcon={<LogOut size={12} />}>
+          <Button variant="danger" style={{ padding: '8px 12px', fontSize: '0.8rem', height: '36px' }} onClick={() => setShowLogoutConfirmModal(true)} leftIcon={<LogOut size={12} />}>
             Logout
           </Button>
         </footer>
@@ -4420,7 +5019,7 @@ export default function App() {
                     <button
                       key={item.view}
                       onClick={() => {
-                        setCurrentView(item.view);
+                        navigateMobileView(item.view);
                         setIsMobileMenuOpen(false);
                         if (item.view === 'employee_scheduled' || item.view === 'employee_past' || item.view === 'employee_future') {
                           fetchEmployeeVisits();
@@ -6806,20 +7405,25 @@ export default function App() {
               </div>
 
               {/* Camera Control Buttons */}
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '24px', flexWrap: 'wrap' }}>
                 {!isCameraActive && !capturedPhoto && (
-                  <button type="button" className="btn btn-primary" onClick={startCamera} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button type="button" className="btn btn-primary" onClick={() => startCamera()} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Camera size={16} /> Start Camera
                   </button>
                 )}
                 {isCameraActive && (
-                  <button type="button" className="btn btn-success" onClick={capturePhoto} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, var(--indigo-primary), var(--indigo-secondary))', border: 'none', color: '#fff' }}>
-                    <Camera size={16} /> Capture Photo
-                  </button>
+                  <>
+                    <button type="button" className="btn btn-success" onClick={capturePhoto} style={{ fontSize: '0.9rem', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, var(--indigo-primary), var(--indigo-secondary))', border: 'none', color: '#fff' }}>
+                      <Camera size={16} /> Capture Photo
+                    </button>
+                    <button type="button" className="btn btn-secondary" onClick={toggleCameraFacingMode} style={{ fontSize: '0.85rem', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <RefreshCw size={14} /> Flip ({facingMode === 'user' ? 'Front' : 'Back'})
+                    </button>
+                  </>
                 )}
                 {(isCameraActive || capturedPhoto) && (
-                  <button type="button" className="btn btn-secondary" onClick={() => { stopCamera(); setCapturedPhoto(null); }} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <RefreshCw size={16} /> Retake / Clear
+                  <button type="button" className="btn btn-secondary" onClick={() => { stopCamera(); setCapturedPhoto(null); }} style={{ fontSize: '0.9rem', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <X size={16} /> Clear
                   </button>
                 )}
               </div>
@@ -6984,6 +7588,132 @@ export default function App() {
         );
       })()}
 
+      {/* MODAL: Arrival Visitor Photo (Mobile Only) */}
+      {showArrivalPhotoModal && (() => {
+        const activeVisit = queue.find(item => item.id === showArrivalPhotoModal) || 
+                            futureInvitations.find(item => item.id === showArrivalPhotoModal);
+        const visitorName = activeVisit?.visitorName || 'Visitor';
+
+        return (
+          <div className="modal-overlay" style={{ zIndex: 9999 }}>
+            <div className="modal-content" style={{ maxWidth: '420px', width: '100%', textAlign: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Camera size={20} style={{ color: 'var(--color-indigo-accent)' }} />
+                  Capture Visitor Arrival Photo
+                </h3>
+                <button 
+                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
+                  onClick={() => {
+                    stopCamera();
+                    setShowArrivalPhotoModal(null);
+                    setCapturedPhoto(null);
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
+                Please take a photo of <strong style={{ color: 'var(--color-text-primary)' }}>{visitorName}</strong> at arrival. This photo will be attached to the instant notification sent to the host.
+              </p>
+
+              {/* Video / Captured Image Container */}
+              <div style={{ position: 'relative', width: '260px', height: '260px', borderRadius: '14px', overflow: 'hidden', border: '2px solid var(--card-border)', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+                {isCameraActive ? (
+                  <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} autoPlay playsInline muted />
+                ) : capturedPhoto ? (
+                  <img src={capturedPhoto} alt="Captured Visitor" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ color: 'var(--color-text-secondary)' }}>
+                    <User size={64} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+                    <span style={{ fontSize: '0.8rem', display: 'block' }}>Camera Off</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Camera Control Buttons */}
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
+                {!isCameraActive && !capturedPhoto && (
+                  <button type="button" className="btn btn-primary" onClick={() => startCamera()} style={{ fontSize: '0.9rem', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Camera size={16} /> Start Camera
+                  </button>
+                )}
+                {isCameraActive && (
+                  <>
+                    <button type="button" className="btn btn-success" onClick={capturePhoto} style={{ fontSize: '0.9rem', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, var(--indigo-primary), var(--indigo-secondary))', border: 'none', color: '#fff' }}>
+                      <Camera size={16} /> Capture Photo
+                    </button>
+                    <button type="button" className="btn btn-secondary" onClick={toggleCameraFacingMode} style={{ fontSize: '0.85rem', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <RefreshCw size={14} /> Flip ({facingMode === 'user' ? 'Front' : 'Back'})
+                    </button>
+                  </>
+                )}
+                {(isCameraActive || capturedPhoto) && (
+                  <button type="button" className="btn btn-secondary" onClick={() => { stopCamera(); setCapturedPhoto(null); }} style={{ fontSize: '0.9rem', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <X size={16} /> Clear
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid var(--card-border)', paddingTop: '16px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    stopCamera();
+                    setShowArrivalPhotoModal(null);
+                    setCapturedPhoto(null);
+                  }}
+                  style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  disabled={!capturedPhoto}
+                  onClick={async () => {
+                    if (!showArrivalPhotoModal || !capturedPhoto) return;
+                    const vid = showArrivalPhotoModal;
+                    
+                    try {
+                      // 1. Get visitorId for this visit
+                      if (activeVisit?.visitorId) {
+                        await supabase
+                          .from('Visitor')
+                          .update({ photoUrl: capturedPhoto })
+                          .eq('id', activeVisit.visitorId);
+                      }
+
+                      // 2. Mark visitor as arrived ('Waiting')
+                      await handleSecurityMarkArrived(vid);
+
+                      setAlertMessage({ type: 'success', text: '✅ Arrival photo captured and sent to host notification!' });
+                    } catch (err: any) {
+                      setAlertMessage({ type: 'error', text: err.message || 'Failed to update arrival photo' });
+                    } finally {
+                      stopCamera();
+                      setCapturedPhoto(null);
+                      setShowArrivalPhotoModal(null);
+                    }
+                  }}
+                  style={{ 
+                    padding: '10px 24px', 
+                    fontSize: '0.9rem', 
+                    background: capturedPhoto ? 'linear-gradient(135deg, #10b981, #059669)' : 'var(--card-border)', 
+                    cursor: capturedPhoto ? 'pointer' : 'not-allowed',
+                    opacity: capturedPhoto ? 1 : 0.6
+                  }}
+                >
+                  Confirm Arrival &amp; Notify Host
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* MODAL: Deny Entry Reason */}
       {showDenyModal && (
         <div className="modal-overlay">
@@ -7011,6 +7741,54 @@ export default function App() {
                 <button type="submit" className="btn btn-danger">Confirm Deny</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Mobile Logout Confirmation */}
+      {showLogoutConfirmModal && (
+        <div className="modal-overlay" style={{ zIndex: 99999 }}>
+          <div className="modal-content" style={{ maxWidth: '380px', width: '90%', textAlign: 'center', padding: '24px' }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              background: 'rgba(239, 68, 68, 0.12)',
+              color: 'var(--color-danger)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px'
+            }}>
+              <LogOut size={24} />
+            </div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '8px' }}>
+              Confirm Log Out
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '24px', lineHeight: '1.4' }}>
+              Are you sure you want to log out of your session? You will need to sign in again to access your dashboard.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <button 
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowLogoutConfirmModal(false)}
+                style={{ padding: '10px', fontSize: '0.85rem', justifyContent: 'center' }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  setShowLogoutConfirmModal(false);
+                  handleLogout();
+                }}
+                style={{ padding: '10px', fontSize: '0.85rem', justifyContent: 'center' }}
+              >
+                Yes, Log Out
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -7579,6 +8357,115 @@ export default function App() {
         </div>
       )}
 
+      {/* App-Themed Card Notification Modal (Matching correct.jpeg specification) */}
+      {alertMessage && (
+        <div style={{
+          position: 'fixed',
+          top: isMobile ? '20px' : '24px',
+          right: isMobile ? '5%' : '24px',
+          left: isMobile ? '5%' : 'auto',
+          zIndex: 999999,
+          maxWidth: isMobile ? '90%' : '420px',
+          width: '100%',
+          animation: 'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          background: 'var(--card-bg, #18181b)',
+          borderRadius: '18px',
+          border: alertMessage.type === 'success' 
+            ? '1.5px solid rgba(16, 185, 129, 0.4)' 
+            : alertMessage.type === 'warning'
+            ? '1.5px solid rgba(245, 158, 11, 0.4)'
+            : '1.5px solid rgba(239, 68, 68, 0.4)',
+          boxShadow: '0 20px 30px -5px rgba(0, 0, 0, 0.5), 0 10px 15px -5px rgba(0, 0, 0, 0.3)',
+          backdropFilter: 'blur(12px)',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              background: alertMessage.type === 'success' 
+                ? 'rgba(16, 185, 129, 0.15)' 
+                : alertMessage.type === 'warning'
+                ? 'rgba(245, 158, 11, 0.15)'
+                : 'rgba(239, 68, 68, 0.15)',
+              border: alertMessage.type === 'success' 
+                ? '1px solid rgba(16, 185, 129, 0.3)' 
+                : alertMessage.type === 'warning'
+                ? '1px solid rgba(245, 158, 11, 0.3)'
+                : '1px solid rgba(239, 68, 68, 0.3)',
+              color: alertMessage.type === 'success' 
+                ? 'var(--color-success, #10b981)' 
+                : alertMessage.type === 'warning'
+                ? 'var(--color-warning, #f59e0b)'
+                : 'var(--color-danger, #ef4444)',
+              borderRadius: '50%',
+              padding: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              {alertMessage.type === 'success' ? (
+                <CheckCircle size={22} />
+              ) : alertMessage.type === 'warning' ? (
+                <Clock size={22} />
+              ) : (
+                <ShieldAlert size={22} className="pulse-slow" />
+              )}
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: 'var(--color-text-primary, #ffffff)' }}>
+                {alertMessage.title || (
+                  alertMessage.type === 'success' 
+                    ? 'Operation Successful' 
+                    : alertMessage.type === 'warning'
+                    ? 'System Advisory'
+                    : 'Security Alert'
+                )}
+              </h4>
+              <span style={{ 
+                fontSize: '0.75rem', 
+                fontWeight: 600,
+                color: alertMessage.type === 'success' 
+                  ? 'var(--color-success, #10b981)' 
+                  : alertMessage.type === 'warning'
+                  ? 'var(--color-warning, #f59e0b)'
+                  : 'var(--color-danger, #ef4444)'
+              }}>
+                {alertMessage.type === 'success' 
+                  ? 'System Notification' 
+                  : alertMessage.type === 'warning'
+                  ? 'Gate Control Warning'
+                  : 'Action Restricted'}
+              </span>
+            </div>
+          </div>
+
+          <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary, #e4e4e7)', lineHeight: '1.5' }}>
+            {alertMessage.text}
+          </p>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+            <button 
+              onClick={() => setAlertMessage(null)}
+              className="btn btn-secondary"
+              style={{
+                padding: '6px 16px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                borderRadius: '10px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: 'var(--color-text-primary, #ffffff)',
+                border: '1px solid rgba(255, 255, 255, 0.15)'
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Real-time Popup Notifications */}
       {realtimeNotification && (
         <div style={{
@@ -7620,6 +8507,58 @@ export default function App() {
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Instant Host Notification</span>
                 </div>
               </div>
+              {realtimeNotification.photoUrl && (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', margin: '4px 0 8px' }}>
+                  <div 
+                    onClick={() => setShowFullscreenVisitorPhoto(realtimeNotification.photoUrl || null)}
+                    style={{ position: 'relative', cursor: 'pointer' }}
+                    title="Tap to view fullscreen photo"
+                  >
+                    <img 
+                      src={realtimeNotification.photoUrl} 
+                      alt={realtimeNotification.visitorName}
+                      style={{
+                        width: '130px',
+                        height: '130px',
+                        borderRadius: '12px',
+                        objectFit: 'cover',
+                        border: '2.5px solid var(--color-indigo-accent)',
+                        boxShadow: '0 6px 16px rgba(0,0,0,0.25)'
+                      }}
+                    />
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '6px',
+                      right: '6px',
+                      background: 'rgba(0,0,0,0.75)',
+                      color: '#ffffff',
+                      borderRadius: '6px',
+                      padding: '2px 6px',
+                      fontSize: '0.68rem',
+                      fontWeight: 600,
+                      backdropFilter: 'blur(4px)'
+                    }}>
+                      🔍 Tap Fullscreen
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowFullscreenVisitorPhoto(realtimeNotification.photoUrl || null)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--color-indigo-accent)',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      marginTop: '2px'
+                    }}
+                  >
+                    View Fullscreen Visitor Photo 🔍
+                  </button>
+                </div>
+              )}
               <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
                 Your pre-registered visitor, <strong style={{ color: 'var(--color-indigo-accent)' }}>{realtimeNotification.visitorName}</strong>, has just arrived at the lobby.
               </p>
@@ -7629,6 +8568,155 @@ export default function App() {
                 style={{ alignSelf: 'flex-end', padding: '6px 16px', fontSize: '0.8rem' }}
               >
                 Acknowledge
+              </button>
+            </>
+          ) : (realtimeNotification as any).type === 'blacklisted_arrival' ? (
+            <>
+              {/* Type: Blacklisted Visitor Arrived (Host Notification) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: 'var(--color-danger)',
+                  borderRadius: '50%',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <ShieldAlert size={20} className="pulse-slow" />
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>Blacklisted Visitor Arrived</h4>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)' }}>Gate Security Alert</span>
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
+                Visitor <strong style={{ color: 'var(--color-danger)' }}>{(realtimeNotification as any).visitorName}</strong> has arrived at security, but is currently marked as <strong style={{ color: 'var(--color-danger)' }}>blacklisted</strong>.
+              </p>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                <button 
+                  onClick={() => setRealtimeNotification(null)}
+                  className="btn btn-secondary"
+                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                >
+                  Dismiss
+                </button>
+                <button 
+                  onClick={() => handleHostRequestUnblock((realtimeNotification as any).visitId || '', (realtimeNotification as any).visitorId || '', (realtimeNotification as any).visitorName)}
+                  className="btn btn-warning"
+                  disabled={!!pendingActionId}
+                  style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
+                >
+                  {pendingActionId === `request_unblock_${(realtimeNotification as any).visitId}` ? <Loader2 size={14} className="animate-spin" /> : 'Request Admin to Unblock 🔓'}
+                </button>
+              </div>
+            </>
+          ) : (realtimeNotification as any).type === 'unblock_request' ? (
+            <>
+              {/* Type: Unblock Request (Admin Notification) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  background: 'rgba(99, 102, 241, 0.15)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  color: 'var(--color-indigo-accent)',
+                  borderRadius: '50%',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <UserCheck size={20} />
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>Visitor Unblock Requested</h4>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-indigo-accent)' }}>Admin Approval Required</span>
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
+                Host <strong style={{ color: 'var(--color-text-primary)' }}>{(realtimeNotification as any).hostName}</strong> requested to unblock visitor <strong style={{ color: 'var(--color-indigo-accent)' }}>{(realtimeNotification as any).visitorName}</strong>.
+              </p>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '6px' }}>
+                <button 
+                  onClick={() => handleAdminDenyUnblock((realtimeNotification as any).visitorId || '', (realtimeNotification as any).visitorName, (realtimeNotification as any).targetHostId)}
+                  className="btn btn-danger"
+                  disabled={!!pendingActionId}
+                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                >
+                  Deny Unblock ❌
+                </button>
+                <button 
+                  onClick={() => handleAdminApproveUnblock((realtimeNotification as any).visitorId || '', (realtimeNotification as any).visitorName, (realtimeNotification as any).targetHostId)}
+                  className="btn btn-success"
+                  disabled={!!pendingActionId}
+                  style={{ padding: '6px 14px', fontSize: '0.8rem', background: 'var(--color-success)', color: '#fff', border: 'none' }}
+                >
+                  Approve & Unblock ✅
+                </button>
+              </div>
+            </>
+          ) : (realtimeNotification as any).type === 'unblock_approved' ? (
+            <>
+              {/* Type: Unblock Approved */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: 'var(--color-success)',
+                  borderRadius: '50%',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <CheckCircle size={20} />
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>Visitor Unblocked</h4>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-success)' }}>Admin Decision</span>
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
+                Admin has approved unblocking visitor <strong style={{ color: 'var(--color-success)' }}>{realtimeNotification.visitorName}</strong>. Entry is now permitted.
+              </p>
+              <button 
+                onClick={() => setRealtimeNotification(null)}
+                className="btn btn-success"
+                style={{ alignSelf: 'flex-end', padding: '6px 16px', fontSize: '0.8rem', background: 'var(--color-success)', color: '#fff', border: 'none' }}
+              >
+                Got It
+              </button>
+            </>
+          ) : (realtimeNotification as any).type === 'unblock_denied' ? (
+            <>
+              {/* Type: Unblock Denied */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: 'var(--color-danger)',
+                  borderRadius: '50%',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <XCircle size={20} />
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>Unblock Request Denied</h4>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)' }}>Admin Decision</span>
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
+                Admin has denied unblocking visitor <strong style={{ color: 'var(--color-danger)' }}>{realtimeNotification.visitorName}</strong>. Entry remains restricted.
+              </p>
+              <button 
+                onClick={() => setRealtimeNotification(null)}
+                className="btn btn-secondary"
+                style={{ alignSelf: 'flex-end', padding: '6px 16px', fontSize: '0.8rem' }}
+              >
+                Acknowledged
               </button>
             </>
           ) : (
@@ -7674,6 +8762,68 @@ export default function App() {
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {/* Fullscreen Visitor Photo Modal */}
+      {showFullscreenVisitorPhoto && (
+        <div 
+          onClick={() => setShowFullscreenVisitorPhoto(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999999,
+            background: 'rgba(0, 0, 0, 0.92)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <button
+            onClick={() => setShowFullscreenVisitorPhoto(null)}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '44px',
+              height: '44px',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 10
+            }}
+          >
+            <X size={24} />
+          </button>
+          
+          <img 
+            src={showFullscreenVisitorPhoto}
+            alt="Visitor Fullscreen Photo"
+            style={{
+              maxWidth: '92vw',
+              maxHeight: '82vh',
+              borderRadius: '16px',
+              objectFit: 'contain',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              border: '2px solid rgba(255,255,255,0.2)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div style={{ color: '#ffffff', marginTop: '16px', fontSize: '0.85rem', fontWeight: 500, opacity: 0.8 }}>
+            Tap anywhere to dismiss
+          </div>
         </div>
       )}
 
