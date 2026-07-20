@@ -89,4 +89,4 @@ npm run android:sync
 ---
 
 ## 📄 License
-This repository is maintained for Loomishotel Visitor Management System. All rights reserved.
+This repository is maintained for Visitor Management System. All rights reserved.
