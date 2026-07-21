@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build:web": "npm run build --workspace=dashboard-ui",
+    "build:web": "npm run build --workspace=mobile-ui",
     "cap:sync": "cap sync",
     "cap:open": "cap open android",
     "cap:add": "cap add android",

@@ -13,7 +13,7 @@ import analyticsRouter from './routes/analytics';
 
 // Load environment variables
 import path from 'path';
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config();
 
 const app = express();

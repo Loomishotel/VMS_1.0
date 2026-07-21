@@ -449,7 +449,10 @@ export default function App() {
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(false);
+      const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor;
+      const isUaMobile = typeof navigator !== 'undefined' && /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isSmallScreen = typeof window !== 'undefined' && window.innerWidth <= 768;
+      setIsMobile(!!isCapacitor || isUaMobile || isSmallScreen);
     };
 
     checkMobile();
@@ -5457,21 +5460,7 @@ export default function App() {
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
                                 {item.isBlacklisted ? (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-                                    <Badge tone="danger">⚠️ BLACKLISTED</Badge>
-                                    <Button 
-                                      variant="primary" 
-                                      disabled={!!pendingActionId}
-                                      style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 600, background: '#f59e0b', color: '#fff', border: 'none' }}
-                                      onClick={() => handleSecurityNotifyHostBlacklisted(item)}
-                                    >
-                                      {pendingActionId === `notify_host_${item.id}` ? (
-                                        <Loader2 size={14} className="animate-spin" />
-                                      ) : (
-                                        '🔔 Notify Host'
-                                      )}
-                                    </Button>
-                                  </div>
+                                  <Badge tone="danger">⚠️ BLACKLISTED</Badge>
                                 ) : (
                                   <>
                                     {item.status === 'Expected' && (
@@ -5620,20 +5609,6 @@ export default function App() {
                                 </td>
                                 <td style={{ textAlign: 'right' }}>
                                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                    {isBl && (
-                                      <Button 
-                                        variant="primary" 
-                                        disabled={!!pendingActionId}
-                                        style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 600, background: '#f59e0b', color: '#fff', border: 'none' }}
-                                        onClick={() => handleSecurityNotifyHostBlacklisted(item)}
-                                      >
-                                        {pendingActionId === `notify_host_${item.id}` ? (
-                                          <Loader2 size={14} className="animate-spin" />
-                                        ) : (
-                                          '🔔 Notify Host'
-                                        )}
-                                      </Button>
-                                    )}
                                     {!isBl && ['Expected', 'Waiting'].includes(item.status) && (
                                       (() => {
                                         const isToday = new Date(item.scheduledAt).toDateString() === new Date().toDateString();

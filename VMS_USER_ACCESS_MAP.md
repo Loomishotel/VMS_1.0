@@ -3,21 +3,9 @@
 This document lists the credentials, roles, and branch locations of all default user accounts seeded in the PostgreSQL/Supabase database.
 
 ---
+## 1. Branch-Specific User Directory (Seeded Locations)
 
-## 1. Global / Legacy Headquarters Accounts
-These accounts were initially seeded for general setup or Silicon Valley branch operations.
-
-| Full Name | Role | Email Address | Password |
-| :--- | :--- | :--- | :--- |
-| **System Admin** | Admin | `admin@vms.local` | `Admin@123` |
-| **Marcus Guard** | Security | `security@vms.local` | `Security@123` |
-| **Sam Guard** | Security | `security2@vms.local` | `Security@123` |
-
----
-
-## 2. Branch-Specific User Directory (Seeded Locations)
-
-### 2.1 Bangalore HQ (Silicon Valley HQ / Bangalore HQ)
+### 1.1 Bangalore HQ (Silicon Valley HQ / Bangalore HQ)
 * **Branch Timezone:** `Asia/Kolkata`
 
 | Full Name | Role | Email Address | Password |
@@ -29,15 +17,10 @@ These accounts were initially seeded for general setup or Silicon Valley branch 
 | **Emma Rodriguez** | Employee | `emma.r@vms.local` | `Employee@123` |
 | **Robert Sterling** | Employee | `robert.s@vms.local` | `Employee@123` |
 | **Lisa Monroe** | Employee | `lisa.m@vms.local` | `Employee@123` |
-| **Priya Sharma** | Employee | `priya.s@vms.local` | `Employee@123` |
-| **Arjun Nair** | Employee | `arjun.n@vms.local` | `Employee@123` |
-| **Kavitha Reddy** | Employee | `kavitha.r@vms.local` | `Employee@123` |
-| **Suresh Iyer** | Employee | `suresh.i@vms.local` | `Employee@123` |
-| **Deepa Menon** | Employee | `deepa.m@vms.local` | `Employee@123` |
 
 ---
 
-### 2.2 Mumbai Office
+### 1.2 Mumbai Office
 * **Branch Timezone:** `Asia/Kolkata`
 
 | Full Name | Role | Email Address | Password |
@@ -52,7 +35,7 @@ These accounts were initially seeded for general setup or Silicon Valley branch 
 
 ---
 
-### 2.3 Pune Office
+### 1.3 Pune Office
 * **Branch Timezone:** `Asia/Kolkata`
 
 | Full Name | Role | Email Address | Password |
@@ -67,7 +50,7 @@ These accounts were initially seeded for general setup or Silicon Valley branch 
 
 ---
 
-### 2.4 Gurgaon Office
+### 1.4 Gurgaon Office
 * **Branch Timezone:** `Asia/Kolkata`
 
 | Full Name | Role | Email Address | Password |
