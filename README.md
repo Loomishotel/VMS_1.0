@@ -10,7 +10,7 @@ An enterprise-grade, mobile-optimized **Visitor Management System (VMS)** built 
 
 ## 🌐 Live Demo & Deployment
 
-* **Live Web Application (Vercel):** [https://vms-1-0.vercel.app](https://vms-1-0.vercel.app)
+* **Live Web Application (Vercel):** [https://vms-1-0.vercel.app](https://vms-1-0-dashboard-ui.vercel.app)
 * **GitHub Repository:** [https://github.com/Loomishotel/VMS_1.0.git](https://github.com/Loomishotel/VMS_1.0.git)
 
 ---
