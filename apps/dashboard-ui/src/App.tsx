@@ -1355,6 +1355,14 @@ export default function App() {
     return localDate.toISOString().slice(0, 16);
   };
 
+  const getMaxFutureISOString = () => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 6);
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().slice(0, 16);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
@@ -2730,6 +2738,14 @@ export default function App() {
     // Validate that scheduled date and time is not in the past
     if (new Date(preScheduled).getTime() < Date.now() - 60000) {
       setAlertMessage({ type: 'error', text: 'Scheduled date and time cannot be in the past.' });
+      return;
+    }
+
+    // Validate that scheduled date and time is not more than 6 months in the future
+    const maxFutureDate = new Date();
+    maxFutureDate.setMonth(maxFutureDate.getMonth() + 6);
+    if (new Date(preScheduled).getTime() > maxFutureDate.getTime()) {
+      setAlertMessage({ type: 'error', text: 'Scheduled date and time cannot be more than 6 months in the future.' });
       return;
     }
 
@@ -4881,7 +4897,7 @@ export default function App() {
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Scheduled Date &amp; Time *</label>
-            <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} style={{ height: '38px', fontSize: '0.85rem' }} />
+            <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} max={getMaxFutureISOString()} style={{ height: '38px', fontSize: '0.85rem' }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Purpose of Visit *</label>
@@ -6652,7 +6668,7 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Scheduled Date &amp; Time *</label>
-                      <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
+                      <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} max={getMaxFutureISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
                     </div>
                   </div>
 
@@ -7457,7 +7473,7 @@ export default function App() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Scheduled Date &amp; Time *</label>
-                  <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
+                  <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} max={getMaxFutureISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
                 </div>
               </div>
  
