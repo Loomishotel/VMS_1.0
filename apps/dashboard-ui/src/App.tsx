@@ -5476,7 +5476,7 @@ export default function App() {
                                   <>
                                     {item.status === 'Expected' && (
                                       <>
-                                        <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleSecurityMarkArrived(item.id)}>
+                                        <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowArrivalPhotoModal(item.id)}>
                                           Mark Arrived
                                         </Button>
                                         <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
@@ -5639,7 +5639,7 @@ export default function App() {
                                         const isToday = new Date(item.scheduledAt).toDateString() === new Date().toDateString();
                                         if (isToday) {
                                           return (
-                                            <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleSecurityMarkArrived(item.id)}>
+                                            <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowArrivalPhotoModal(item.id)}>
                                               Mark Arrived
                                             </Button>
                                           );
