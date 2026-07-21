@@ -4898,6 +4898,7 @@ export default function App() {
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Scheduled Date &amp; Time *</label>
             <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} max={getMaxFutureISOString()} style={{ height: '38px', fontSize: '0.85rem' }} />
+            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>* Dates more than 6 months from now cannot be selected.</div>
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Purpose of Visit *</label>
@@ -6669,6 +6670,7 @@ export default function App() {
                     <div>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Scheduled Date &amp; Time *</label>
                       <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} max={getMaxFutureISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>* Dates more than 6 months from now cannot be selected.</div>
                     </div>
                   </div>
 
@@ -7474,6 +7476,7 @@ export default function App() {
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Scheduled Date &amp; Time *</label>
                   <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} max={getMaxFutureISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>* Dates more than 6 months from now cannot be selected.</div>
                 </div>
               </div>
  
