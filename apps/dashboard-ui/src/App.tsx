@@ -2720,6 +2720,13 @@ export default function App() {
     e.preventDefault();
     if (!preName || !preHostId || !prePurpose || !preScheduled) return;
 
+    // Validate Name (only alphabets and spaces)
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!nameRegex.test(preName.trim())) {
+      setAlertMessage({ type: 'error', text: 'Visitor Name must contain only alphabetic characters and spaces.' });
+      return;
+    }
+
     // Validate that scheduled date and time is not in the past
     if (new Date(preScheduled).getTime() < Date.now() - 60000) {
       setAlertMessage({ type: 'error', text: 'Scheduled date and time cannot be in the past.' });
@@ -3134,6 +3141,28 @@ export default function App() {
     e.preventDefault();
     if (!addEmpName || !addEmpEmail || !addEmpPhone || !addEmpDeptId) return;
 
+    // Validate Name (only alphabets and spaces)
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!nameRegex.test(addEmpName.trim())) {
+      setAlertMessage({ type: 'error', text: 'Host Name must contain only alphabetic characters and spaces.' });
+      return;
+    }
+
+    // Validate Phone Number (digits, spaces, dashes, parens, optional leading +; between 7 and 15 digits)
+    const phoneRegex = /^\+?[0-9\s\-()]{7,15}$/;
+    const cleanPhone = addEmpPhone.trim().replace(/\D/g, '');
+    if (!phoneRegex.test(addEmpPhone.trim()) || cleanPhone.length < 7 || cleanPhone.length > 15) {
+      setAlertMessage({ type: 'error', text: 'Please enter a valid phone number (7 to 15 digits).' });
+      return;
+    }
+
+    // Validate Email
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(addEmpEmail.trim())) {
+      setAlertMessage({ type: 'error', text: 'Please enter a valid email address.' });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('Employee')
@@ -3178,6 +3207,28 @@ export default function App() {
   const handleEditEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editEmpId || !editEmpName || !editEmpEmail || !editEmpPhone || !editEmpDeptId) return;
+
+    // Validate Name (only alphabets and spaces)
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!nameRegex.test(editEmpName.trim())) {
+      setAlertMessage({ type: 'error', text: 'Employee Name must contain only alphabetic characters and spaces.' });
+      return;
+    }
+
+    // Validate Phone Number (digits, spaces, dashes, parens, optional leading +; between 7 and 15 digits)
+    const phoneRegex = /^\+?[0-9\s\-()]{7,15}$/;
+    const cleanPhone = editEmpPhone.trim().replace(/\D/g, '');
+    if (!phoneRegex.test(editEmpPhone.trim()) || cleanPhone.length < 7 || cleanPhone.length > 15) {
+      setAlertMessage({ type: 'error', text: 'Please enter a valid phone number (7 to 15 digits).' });
+      return;
+    }
+
+    // Validate Email
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(editEmpEmail.trim())) {
+      setAlertMessage({ type: 'error', text: 'Please enter a valid email address.' });
+      return;
+    }
 
     try {
       const { error } = await supabase
