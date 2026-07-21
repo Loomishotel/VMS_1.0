@@ -2326,6 +2326,7 @@ export default function App() {
             phone,
             company,
             visitorType,
+            photoUrl,
             isBlacklisted,
             blacklistFlag,
             flaggedByUserId
@@ -2360,6 +2361,7 @@ export default function App() {
               phone,
               company,
               visitorType,
+              photoUrl,
               isBlacklisted,
               blacklistFlag,
               flaggedByUserId
@@ -2402,6 +2404,7 @@ export default function App() {
             purpose: v.purpose,
             status: v.status,
             scheduledAt: v.scheduledAt,
+            photoUrl: v.Visitor?.photoUrl || '',
             isBlacklisted: isBl,
             blacklistFlag: branchUserIds.includes(v.Visitor?.flaggedByUserId) ? (v.Visitor?.blacklistFlag || '') : 'none',
             remarks: v.remarks || ''
@@ -2456,6 +2459,7 @@ export default function App() {
             phone,
             company,
             visitorType,
+            photoUrl,
             location,
             isBlacklisted
           ),
@@ -2492,6 +2496,7 @@ export default function App() {
             visitorCompany: v.Visitor?.company || '',
             visitorType: v.Visitor?.visitorType || 'Guest',
             visitorLocation: v.Visitor?.location || '',
+            photoUrl: v.Visitor?.photoUrl || '',
             isBlacklisted: isBl,
             hostName: v.Employee?.fullName || 'Host',
             hostPhone: v.Employee?.phone || '',
@@ -3545,7 +3550,7 @@ export default function App() {
                 boxShadow: 'var(--card-shadow)'
               }}>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                       <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -3715,7 +3720,7 @@ export default function App() {
                 boxShadow: 'var(--card-shadow)'
               }}>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                       <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -3891,7 +3896,7 @@ export default function App() {
                   boxShadow: 'var(--card-shadow)'
                 }}>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                    <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                    <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                         <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
@@ -4007,7 +4012,7 @@ export default function App() {
                 boxShadow: 'var(--card-shadow)'
               }}>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                       <span>{item.visitorName}</span>
@@ -4458,7 +4463,7 @@ export default function App() {
                 boxShadow: 'var(--card-shadow)'
               }}>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
                       <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -4574,7 +4579,7 @@ export default function App() {
                 boxShadow: 'var(--card-shadow)'
               }}>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.visitorName}
@@ -4665,7 +4670,7 @@ export default function App() {
                   boxShadow: 'var(--card-shadow)'
                 }}>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                    <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                    <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {item.visitorName}
@@ -5421,7 +5426,7 @@ export default function App() {
                           <tr key={item.id}>
                             <td style={{ padding: '16px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                                 <div>
                                   <div style={{ fontWeight: 600 }}>{item.visitorName}</div>
                                   <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -5586,7 +5591,7 @@ export default function App() {
                               <tr key={item.id} style={{ background: isBl ? 'rgba(239, 68, 68, 0.05)' : '' }}>
                                 <td>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                                    <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                                     <div>
                                       <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <span>{item.visitorName}</span>
@@ -5749,7 +5754,7 @@ export default function App() {
                             >
                               <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                                   
                                   {/* Details */}
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -5946,7 +5951,7 @@ export default function App() {
                             >
                               <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                                   
                                   {/* Details */}
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -6142,7 +6147,7 @@ export default function App() {
                             >
                               <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                                   
                                   {/* Details */}
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -6323,7 +6328,7 @@ export default function App() {
                             >
                               {/* LEFT: Visitor Info */}
                               <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flex: 1 }}>
-                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="lg" />
+                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="lg" src={item.photoUrl || undefined} />
                                 <div style={{ flex: 1 }}>
                                   <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text-primary)', marginBottom: '4px' }}>
                                     {item.visitorName}
@@ -6885,7 +6890,7 @@ export default function App() {
                           <tr key={item.id}>
                             <td style={{ padding: '16px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" />
+                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                                 <div>
                                   <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{item.visitorName}</div>
                                   <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>🏢 {item.visitorCompany || 'Independent'}</div>
@@ -8341,7 +8346,7 @@ export default function App() {
           {/* Header */}
           <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-bg-subtle)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Avatar name={selectedInviteDetails.visitorName} size="md" />
+              <Avatar name={selectedInviteDetails.visitorName} size="md" src={selectedInviteDetails.photoUrl || undefined} />
               <div>
                 <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{selectedInviteDetails.visitorName}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{selectedInviteDetails.visitorEmail || 'No email'}</div>
