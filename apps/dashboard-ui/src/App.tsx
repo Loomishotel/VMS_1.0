@@ -449,7 +449,7 @@ export default function App() {
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(false);
+      setIsMobile(window.innerWidth <= 768);
     };
 
     checkMobile();
