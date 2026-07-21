@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Infinite Spinner — Mobile App Preloader</title>
+<style>
+  :root {
+    --loop-color: #C0392B;   /* red pulled from uploaded app icon */
+    --loop-color-soft: #C0392B33;
+    --bg: #ffffff;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  .screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .spinner-wrap {
+    width: 120px;
+    height: 120px;
+  }
+
+  .spinner {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  /* faint static track so the loop shape reads even mid-animation */
+  .track {
+    fill: none;
+    stroke: var(--loop-color-soft);
+    stroke-width: 8;
+    stroke-linecap: round;
+  }
+
+  .loop {
+    fill: none;
+    stroke: var(--loop-color);
+    stroke-width: 8;
+    stroke-linecap: round;
+    stroke-dasharray: 70 240; /* visible arc length vs total path length */
+    stroke-dashoffset: 0;
+    animation: travel 1.8s linear infinite;
+  }
+
+  @keyframes travel {
+    to {
+      stroke-dashoffset: -310; /* one full lap around the figure-8 */
+    }
+  }
+
+  .label {
+    color: var(--loop-color);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .loop { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="screen">
+    <div class="spinner-wrap">
+      <svg class="spinner" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- clean figure-8 / infinity path: two lobes meeting at center, no extra crossing -->
+        <path
+          class="track"
+          d="M 100,50
+             C 100,20 60,20 60,50
+             C 60,80 100,80 100,50
+             C 100,20 140,20 140,50
+             C 140,80 100,80 100,50
+             Z" />
+        <path
+          class="loop"
+          d="M 100,50
+             C 100,20 60,20 60,50
+             C 60,80 100,80 100,50
+             C 100,20 140,20 140,50
+             C 140,80 100,80 100,50
+             Z" />
+      </svg>
+    </div>
+    <div class="label">Loading…</div>
+  </div>
+
+</body>
+</html>

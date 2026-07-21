@@ -773,3 +773,102 @@ html:not(.dark) .btn-secondary:hover {
   color: #4b5563 !important;
 }
 
+/* Infinite SVG Loading Spinner Component Styles */
+:root {
+  --loop-color: #C0392B;   /* Red accent from infinity spinner */
+  --loop-color-soft: rgba(192, 57, 43, 0.2);
+}
+
+.infinite-spinner-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.infinite-spinner-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.infinite-spinner-card {
+  background: var(--card-bg-solid, #ffffff);
+  border: 1px solid var(--card-border, #ebece6);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+  border-radius: 24px;
+  padding: 32px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  transform: scale(0.92);
+  transition: transform 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.infinite-spinner-overlay.visible .infinite-spinner-card {
+  transform: scale(1);
+}
+
+.infinite-spinner-wrap {
+  width: 120px;
+  height: 120px;
+}
+
+.infinite-spinner-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Faint static track so the loop shape reads even mid-animation */
+.infinite-spinner-track {
+  fill: none;
+  stroke: var(--loop-color-soft);
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+
+.infinite-spinner-loop {
+  fill: none;
+  stroke: var(--loop-color);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 70 240; /* visible arc length vs total path length */
+  stroke-dashoffset: 0;
+  animation: infinite-travel 1.8s linear infinite;
+}
+
+@keyframes infinite-travel {
+  to {
+    stroke-dashoffset: -310; /* one full lap around the figure-8 */
+  }
+}
+
+.infinite-spinner-label {
+  color: var(--loop-color);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .infinite-spinner-loop {
+    animation: none;
+  }
+}
+
+

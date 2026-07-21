@@ -40,8 +40,11 @@ import {
 } from 'recharts';
 import { supabase } from './supabaseClient';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { useLoading } from './components/LoadingSpinner';
 
 const BACKEND_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+
 
 type View = 'queue' | 'employees' | 'blacklist' | 'analytics' | 'security_arrivals' | 'check_invite' | 'employee_scheduled' | 'employee_past' | 'employee_invite' | 'blacklist_review' | 'security_history' | 'employee_future';
 
@@ -436,11 +439,13 @@ export function Button({
 
 
 export default function App() {
+  const { showLoader, hideLoader, withLoader } = useLoading();
   const [token, setToken] = useState<string | null>(localStorage.getItem('vms_token'));
   const [user, setUser] = useState<any | null>(null);
   const [currentView, setCurrentView] = useState<View>('queue');
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
 
   useEffect(() => {
     const checkMobile = () => {
@@ -457,7 +462,7 @@ export default function App() {
 
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [realtimeNotification, setRealtimeNotification] = useState<{
-    type: 'arrived' | 'delay' | 'blacklisted_arrival' | 'unblock_request' | 'unblock_approved' | 'unblock_denied';
+    type: 'arrived' | 'delay' | 'blacklisted_arrival' | 'unblock_request' | 'unblock_approved' | 'unblock_denied' | 'blacklisted_host_rejected';
     visitorName: string;
     visitorId?: string;
     visitId?: string;
@@ -641,12 +646,14 @@ export default function App() {
       setIsRefreshing(true);
       setPullY(0);
       try {
-        await Promise.all([
-          fetchQueue(true),
-          fetchBlacklistReview(),
-          fetchEmployeeVisits(),
-          fetchFutureInvitations()
-        ]);
+        await withLoader(async () => {
+          await Promise.all([
+            fetchQueue(true),
+            fetchBlacklistReview(),
+            fetchEmployeeVisits(),
+            fetchFutureInvitations()
+          ]);
+        }, 'Syncing Mobile Data…');
         setAlertMessage({ type: 'success', text: 'Data refreshed successfully! 🔄' });
       } catch (err) {
         console.error('Refresh error:', err);
@@ -674,23 +681,25 @@ export default function App() {
       });
     }, 2500);
 
-    try {
-      const result = await actionFn();
-      clearTimeout(slowTimer);
-      setIsNetworkSlow(false);
-      setPendingActionId(null);
-      return result;
-    } catch (err: any) {
-      clearTimeout(slowTimer);
-      setIsNetworkSlow(false);
-      setPendingActionId(null);
-      console.error('Mobile network action error:', err);
-      setAlertMessage({
-        type: 'error',
-        text: '⚠️ Network error occurred. Please check your connection and try again.'
-      });
-      return undefined;
-    }
+    return await withLoader(async () => {
+      try {
+        const result = await actionFn();
+        clearTimeout(slowTimer);
+        setIsNetworkSlow(false);
+        setPendingActionId(null);
+        return result;
+      } catch (err: any) {
+        clearTimeout(slowTimer);
+        setIsNetworkSlow(false);
+        setPendingActionId(null);
+        console.error('Mobile network action error:', err);
+        setAlertMessage({
+          type: 'error',
+          text: '⚠️ Network error occurred. Please check your connection and try again.'
+        });
+        return undefined;
+      }
+    }, 'Processing…');
   };
 
   const handleMobileGoBack = () => {
@@ -706,8 +715,10 @@ export default function App() {
     // 2. Navigate back to previous screen in history stack
     if (mobileHistory.length > 0) {
       const prevView = mobileHistory[mobileHistory.length - 1];
+      showLoader('Loading View…');
       setMobileHistory(prev => prev.slice(0, -1));
       setCurrentView(prevView);
+      hideLoader();
 
       setShowSwipeBackIndicator(true);
       setTimeout(() => setShowSwipeBackIndicator(false), 700);
@@ -716,10 +727,13 @@ export default function App() {
 
   const navigateMobileView = (newView: View) => {
     if (newView !== currentView) {
+      showLoader('Loading View…');
       setMobileHistory(prev => [...prev, currentView]);
       setCurrentView(newView);
+      hideLoader();
     }
   };
+
 
   // Mobile Native System Tray & Push Notification helper
   const sendMobileDeviceNotification = async (title: string, body: string, iconUrl?: string) => {
@@ -1304,6 +1318,24 @@ export default function App() {
               visitorName: p.visitorName
             });
           }
+        }
+      })
+      .on('broadcast', { event: 'blacklisted_host_rejected' }, (payload: any) => {
+        const p = payload.payload;
+        if (['Security', 'Admin'].includes(user.role)) {
+          setRealtimeNotification({
+            type: 'blacklisted_host_rejected' as any,
+            visitorName: p.visitorName,
+            hostName: p.hostName
+          });
+          if (isMobile) {
+            sendMobileDeviceNotification(
+              '🚫 Blacklisted Entry Rejected',
+              `Host ${p.hostName} rejected entry for blacklisted visitor ${p.visitorName}. Do not process further.`,
+              '/123.png'
+            );
+          }
+          fetchQueue(true);
         }
       })
       .subscribe();
@@ -2032,6 +2064,41 @@ export default function App() {
       });
     });
   };
+
+  // Host Rejects Entry for Blacklisted Visitor
+  const handleHostRejectBlacklisted = async (visitId: string, visitorId: string, visitorName: string) => {
+    return executeWithNetworkWatchdog(`reject_blacklisted_${visitId}`, async () => {
+      if (visitId) {
+        await supabase
+          .from('Visit')
+          .update({
+            status: 'denied',
+            deniedReason: 'Denied entry by host (Blacklisted visitor)'
+          })
+          .eq('id', visitId);
+      }
+
+      const channel = supabase.channel('vms_global_broadcast');
+      await channel.send({
+        type: 'broadcast',
+        event: 'blacklisted_host_rejected',
+        payload: {
+          visitId,
+          visitorId,
+          visitorName,
+          hostName: user?.fullName || 'Host'
+        }
+      });
+
+      setRealtimeNotification(null);
+      setAlertMessage({
+        type: 'warning',
+        text: `You rejected entry for blacklisted visitor ${visitorName}. Security has been notified.`
+      });
+      fetchEmployeeVisits();
+    });
+  };
+
 
   // Admin Decisions on Unblock Request
   const handleAdminApproveUnblock = async (visitorId: string, visitorName: string, targetHostId?: string) => {
@@ -8596,11 +8663,12 @@ export default function App() {
               </p>
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
                 <button 
-                  onClick={() => setRealtimeNotification(null)}
-                  className="btn btn-secondary"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                  onClick={() => handleHostRejectBlacklisted((realtimeNotification as any).visitId || '', (realtimeNotification as any).visitorId || '', (realtimeNotification as any).visitorName)}
+                  className="btn btn-danger"
+                  disabled={!!pendingActionId}
+                  style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
                 >
-                  Dismiss
+                  {pendingActionId === `reject_blacklisted_${(realtimeNotification as any).visitId}` ? <Loader2 size={14} className="animate-spin" /> : 'Reject Entry 🚫'}
                 </button>
                 <button 
                   onClick={() => handleHostRequestUnblock((realtimeNotification as any).visitId || '', (realtimeNotification as any).visitorId || '', (realtimeNotification as any).visitorName)}
@@ -8710,6 +8778,38 @@ export default function App() {
               </div>
               <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
                 Admin has denied unblocking visitor <strong style={{ color: 'var(--color-danger)' }}>{realtimeNotification.visitorName}</strong>. Entry remains restricted.
+              </p>
+              <button 
+                onClick={() => setRealtimeNotification(null)}
+                className="btn btn-secondary"
+                style={{ alignSelf: 'flex-end', padding: '6px 16px', fontSize: '0.8rem' }}
+              >
+                Acknowledged
+              </button>
+            </>
+          ) : (realtimeNotification as any).type === 'blacklisted_host_rejected' ? (
+            <>
+              {/* Type: Blacklisted Entry Rejected by Host (Security Notification) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: 'var(--color-danger)',
+                  borderRadius: '50%',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <XCircle size={20} className="pulse-slow" />
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>Blacklisted Entry Rejected</h4>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)' }}>Host Decision Alert</span>
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
+                Host <strong style={{ color: 'var(--color-text-primary)' }}>{(realtimeNotification as any).hostName}</strong> has <strong style={{ color: 'var(--color-danger)' }}>REJECTED</strong> entry for blacklisted visitor <strong style={{ color: 'var(--color-danger)' }}>{realtimeNotification.visitorName}</strong>. Do NOT process entry further.
               </p>
               <button 
                 onClick={() => setRealtimeNotification(null)}
