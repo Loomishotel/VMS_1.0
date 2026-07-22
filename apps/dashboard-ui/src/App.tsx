@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Building, 
-  Users, 
+import {
+  Building,
+  Users,
   Bell,
-  BarChart2, 
-  ShieldAlert, 
-  Clock, 
-  UserCheck, 
+  BarChart2,
+  ShieldAlert,
+  Clock,
+  UserCheck,
   Search,
   Plus,
   LogOut,
@@ -24,16 +24,16 @@ import {
   Camera,
   RefreshCw
 } from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
-  PieChart, 
-  Pie, 
+  PieChart,
+  Pie,
   Cell,
   BarChart,
   Bar
@@ -143,7 +143,7 @@ export function Avatar({ src, name, size = 'md', className, style, ring, online,
   const sizeStyle = avatarSizesMap[size] || avatarSizesMap.md;
   const initialsText = getInitials(name);
   const colors = getAvatarColors(visitorType);
-  
+
   const ringStyle = ring ? {
     boxShadow: '0 0 0 2px var(--indigo-primary), 0 0 0 4px var(--bg-dark)',
   } : {};
@@ -495,7 +495,7 @@ export default function App() {
 
   // RBAC States
   const [employeeVisits, setEmployeeVisits] = useState<any[]>([]);
-  
+
   const [showFlagBlacklistModal, setShowFlagBlacklistModal] = useState<string | null>(null);
   const [flagReasonStr, setFlagReasonStr] = useState('');
 
@@ -579,11 +579,11 @@ export default function App() {
   useEffect(() => {
     if (alertMessage) {
       if (isMobile) {
-        const defaultTitle = alertMessage.type === 'success' 
-          ? 'Operation Successful' 
+        const defaultTitle = alertMessage.type === 'success'
+          ? 'Operation Successful'
           : alertMessage.type === 'warning'
-          ? 'System Advisory'
-          : 'Security Alert';
+            ? 'System Advisory'
+            : 'Security Alert';
         sendMobileDeviceNotification(alertMessage.title || defaultTitle, alertMessage.text, '/123.png');
       }
 
@@ -752,7 +752,7 @@ export default function App() {
             visibility: 1,
             vibration: true
           });
-        } catch (chErr) {}
+        } catch (chErr) { }
 
         await LocalNotifications.schedule({
           notifications: [
@@ -794,7 +794,7 @@ export default function App() {
                 icon: iconUrl || '/123.png',
                 badge: '/123.png'
               });
-            } catch (e) {}
+            } catch (e) { }
           }
         });
       }
@@ -805,7 +805,7 @@ export default function App() {
     if (isMobile) {
       try {
         LocalNotifications.requestPermissions();
-      } catch (e) {}
+      } catch (e) { }
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
       }
@@ -815,12 +815,12 @@ export default function App() {
   const startCamera = async (overrideFacingMode?: 'user' | 'environment') => {
     const currentFacing = overrideFacingMode || facingMode;
     try {
-      const constraints: MediaStreamConstraints = { 
-        video: isMobile 
-          ? { facingMode: { ideal: currentFacing }, width: { ideal: 640 }, height: { ideal: 640 } } 
-          : { width: 320, height: 320, facingMode: currentFacing } 
+      const constraints: MediaStreamConstraints = {
+        video: isMobile
+          ? { facingMode: { ideal: currentFacing }, width: { ideal: 640 }, height: { ideal: 640 } }
+          : { width: 320, height: 320, facingMode: currentFacing }
       };
-      
+
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         streamRef.current = stream;
@@ -1002,7 +1002,7 @@ export default function App() {
   // Analytics States
   const [analytics, setAnalytics] = useState<any | null>(null);
 
-  
+
 
   // Fetch current user details on load if token exists
   const fetchCurrentUser = async () => {
@@ -1012,7 +1012,7 @@ export default function App() {
         handleLogout();
         return;
       }
-      
+
       const { data: publicProfile, error } = await supabase
         .from('User')
         .select(`
@@ -1031,7 +1031,7 @@ export default function App() {
         `)
         .eq('id', session.user.id)
         .single();
-      
+
       if (error || !publicProfile) {
         handleLogout();
         return;
@@ -1121,7 +1121,7 @@ export default function App() {
 
     } else if (currentView === 'analytics') {
       fetchAnalytics();
-            } else if (currentView === 'check_invite') {
+    } else if (currentView === 'check_invite') {
       fetchFutureInvitations();
     } else if (currentView === 'security_history') {
       fetchPastRecords();
@@ -1139,7 +1139,7 @@ export default function App() {
         { event: '*', schema: 'public', table: 'Visit' },
         async (payload: any) => {
           console.log('Realtime update detected on Visits table:', payload);
-          
+
           // Trigger refresh of lists if currently viewing them
           if (currentView === 'queue' || currentView === 'security_arrivals') {
             fetchQueue(true);
@@ -1159,11 +1159,11 @@ export default function App() {
             if (user.role === 'Employee' && employeeId) {
               const existing = employeeVisitsRef.current.find(v => v.id === newRecord.id);
               const oldStatus = existing ? existing.status : null;
-              
-              const becameArrived = 
+
+              const becameArrived =
                 (newRecord.status === 'Waiting' || newRecord.status === 'CheckedIn') &&
                 oldStatus !== 'Waiting' && oldStatus !== 'CheckedIn';
-              
+
               const isMyVisitor = newRecord.hostEmployeeId === employeeId;
 
               if (becameArrived && isMyVisitor) {
@@ -1173,7 +1173,7 @@ export default function App() {
                     .select('fullName, photoUrl')
                     .eq('id', newRecord.visitorId)
                     .single();
-                  
+
                   if (visData) {
                     setRealtimeNotification({
                       type: 'arrived',
@@ -1509,7 +1509,7 @@ export default function App() {
 
     const remaining = Math.max(0, Math.ceil((lockoutUntil - Date.now()) / 1000));
     setSecondsRemaining(remaining);
-    
+
     const interval = setInterval(() => {
       const rem = Math.max(0, Math.ceil((lockoutUntil - Date.now()) / 1000));
       setSecondsRemaining(rem);
@@ -1521,7 +1521,7 @@ export default function App() {
         localStorage.removeItem('vms_login_lockout_until');
       }
     }, 1000);
-    
+
     return () => clearInterval(interval);
   }, [lockoutUntil]);
 
@@ -1750,7 +1750,7 @@ export default function App() {
         const { data: usersData } = await supabase
           .from('User')
           .select('id, fullName');
-        
+
         const userMap = new Map((usersData || []).map((u: any) => [u.id, u.fullName]));
 
         const filteredVisitors = data.filter((v: any) => {
@@ -1925,7 +1925,7 @@ export default function App() {
       setAlertMessage({ type: 'success', text: 'Visitor flagged for blacklist review.' });
       setShowFlagBlacklistModal(null);
       setFlagReasonStr('');
-      
+
       if (currentView === 'security_arrivals') fetchQueue();
       if (currentView === 'check_invite') fetchFutureInvitations();
     } catch (err: any) {
@@ -1944,9 +1944,9 @@ export default function App() {
 
       if (error) throw error;
 
-      setAlertMessage({ 
-        type: 'success', 
-        text: 'Visit cancellation requested. Reception has been notified to handle the visitor if they arrive.' 
+      setAlertMessage({
+        type: 'success',
+        text: 'Visit cancellation requested. Reception has been notified to handle the visitor if they arrive.'
       });
       fetchEmployeeVisits();
     } catch (err: any) {
@@ -1972,9 +1972,9 @@ export default function App() {
         status: 'Queued'
       });
 
-      setAlertMessage({ 
-        type: 'success', 
-        text: `⏳ Visit delayed by ${minutes} minutes! New scheduled time: ${new Date(newScheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` 
+      setAlertMessage({
+        type: 'success',
+        text: `⏳ Visit delayed by ${minutes} minutes! New scheduled time: ${new Date(newScheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       });
       fetchEmployeeVisits();
     } catch (err: any) {
@@ -1990,7 +1990,7 @@ export default function App() {
         .select('scheduledAt')
         .eq('id', visitId)
         .single();
-      
+
       if (fetchErr) throw fetchErr;
 
       if (visit && visit.scheduledAt) {
@@ -2010,7 +2010,7 @@ export default function App() {
       if (error) throw error;
 
       setAlertMessage({ type: 'success', text: 'Visitor marked as arrived. Reception has been notified!' });
-      
+
       if (currentView === 'security_arrivals') fetchQueue();
       if (currentView === 'check_invite') fetchFutureInvitations();
     });
@@ -2257,8 +2257,8 @@ export default function App() {
         const mapped = data
           .map((v: any) => {
             const isBl = (v.Visitor?.id && blacklistedVisitorIds.has(v.Visitor.id)) ||
-                         (v.Visitor?.fullName && blacklistedNames.has(v.Visitor.fullName.toLowerCase().trim())) ||
-                         false;
+              (v.Visitor?.fullName && blacklistedNames.has(v.Visitor.fullName.toLowerCase().trim())) ||
+              false;
             return {
               id: v.id,
               visitorId: v.visitorId,
@@ -2396,8 +2396,8 @@ export default function App() {
       if (data) {
         const mapped = data.filter((v: any) => v.Visitor !== null).map((v: any) => {
           const isBl = (v.Visitor?.id && blacklistedVisitorIds.has(v.Visitor.id)) ||
-                       (v.Visitor?.fullName && blacklistedNames.has(v.Visitor.fullName.toLowerCase().trim())) ||
-                       false;
+            (v.Visitor?.fullName && blacklistedNames.has(v.Visitor.fullName.toLowerCase().trim())) ||
+            false;
           return {
             id: v.id,
             visitorId: v.Visitor?.id || '',
@@ -2493,8 +2493,8 @@ export default function App() {
       if (data) {
         const mapped = data.filter((v: any) => v.Visitor !== null).map((v: any) => {
           const isBl = (v.Visitor?.id && blacklistedVisitorIds.has(v.Visitor.id)) ||
-                       (v.Visitor?.fullName && blacklistedNames.has(v.Visitor.fullName.toLowerCase().trim())) ||
-                       false;
+            (v.Visitor?.fullName && blacklistedNames.has(v.Visitor.fullName.toLowerCase().trim())) ||
+            false;
           return {
             id: v.id,
             visitorId: v.Visitor?.id || '',
@@ -2619,14 +2619,14 @@ export default function App() {
 
       if (visits) {
         const todayStr = new Date().toDateString();
-        
+
         const todaysVisitors = visits.filter(v => new Date(v.createdAt).toDateString() === todayStr).length;
         const deniedEntries = visits.filter(v => v.status === 'Denied').length; // 30d total denied entries
         const deniedEntriesToday = visits.filter(v => v.status === 'Denied' && new Date(v.createdAt).toDateString() === todayStr).length;
 
         // Dwell time calculation (avg checkedout session duration)
         const checkouts = visits.filter(v => v.status === 'CheckedOut' && v.checkedInAt && v.checkedOutAt && new Date(v.checkedOutAt).getTime() >= new Date(v.checkedInAt).getTime());
-        const avgVisitMinutes = checkouts.length > 0 
+        const avgVisitMinutes = checkouts.length > 0
           ? Math.round(checkouts.reduce((acc, curr) => acc + (new Date(curr.checkedOutAt!).getTime() - new Date(curr.checkedInAt!).getTime()), 0) / (checkouts.length * 60000))
           : 45; // default fallback metric
 
@@ -2805,9 +2805,9 @@ export default function App() {
       }
       const limit = getPhoneLimit(activePrefix);
       if (checkDigits.length !== limit) {
-        setAlertMessage({ 
-          type: 'error', 
-          text: `Phone number must be exactly ${limit} digits for ${activePrefix}. Currently it has ${checkDigits.length} digits.` 
+        setAlertMessage({
+          type: 'error',
+          text: `Phone number must be exactly ${limit} digits for ${activePrefix}. Currently it has ${checkDigits.length} digits.`
         });
         return;
       }
@@ -2834,18 +2834,18 @@ export default function App() {
 
       if (matchingVisitors && matchingVisitors.length > 0) {
         const matchingVisitorIds = matchingVisitors.map((v: any) => v.id);
-        
+
         let query = supabase
           .from('Blacklist')
           .select('id')
           .in('addedByUserId', branchUserIds);
-          
+
         if (matchingVisitorIds.length > 0) {
           query = query.or(`visitorId.in.(${matchingVisitorIds.join(',')}),fullName.ilike.${preName.trim()}`);
         } else {
           query = query.ilike('fullName', preName.trim());
         }
-        
+
         const { data: blMatches } = await query;
         if (blMatches && blMatches.length > 0) {
           blacklistCheck = true;
@@ -2869,7 +2869,7 @@ export default function App() {
 
       // 2. Check or Create Visitor
       let visitorId = '';
-      
+
       // Look up visitors with the same name
       const { data: nameMatches } = await supabase
         .from('Visitor')
@@ -2964,7 +2964,7 @@ export default function App() {
 
       setAlertMessage({ type: 'success', text: `✅ Pre-registered ${preName}! Check-in code: ${checkInCode} — share this with the visitor for lobby entry.` });
       setShowPreRegModal(false);
-      
+
       if (currentView === 'queue' || currentView === 'security_arrivals') fetchQueue();
       if (currentView === 'check_invite') fetchFutureInvitations();
       if (currentView === 'employee_scheduled' || currentView === 'employee_past' || currentView === 'employee_invite') fetchEmployeeVisits();
@@ -2986,7 +2986,7 @@ export default function App() {
 
   // Check In visitor and generate printable pass
   const handleApproveCheckIn = async (
-    visitId: string, 
+    visitId: string,
     photoToAttach?: string | null,
     completedEmail?: string | null,
     completedPhone?: string | null
@@ -3349,28 +3349,28 @@ export default function App() {
   const todayStr = new Date().toDateString();
   const todaysQueue = queue.filter(item => {
     const isToday = (item.scheduledAt && new Date(item.scheduledAt).toDateString() === todayStr) ||
-                    (item.createdAt && new Date(item.createdAt).toDateString() === todayStr);
+      (item.createdAt && new Date(item.createdAt).toDateString() === todayStr);
     const isActive = ['CheckedIn', 'Waiting', 'Expected'].includes(item.status);
     return isToday || (isActive && item.status !== 'Expected');
   });
 
-  const activeArrivalsToday = todaysQueue.filter(item => 
+  const activeArrivalsToday = todaysQueue.filter(item =>
     ['Expected', 'Waiting', 'CheckedIn'].includes(item.status)
   );
 
-  const filteredArrivals = activeArrivalsToday.filter(item => 
+  const filteredArrivals = activeArrivalsToday.filter(item =>
     item.visitorName.toLowerCase().includes(queueSearch.toLowerCase()) ||
     item.hostName.toLowerCase().includes(queueSearch.toLowerCase())
   );
 
   // Filter queues
-  const filteredQueue = todaysQueue.filter(item => 
+  const filteredQueue = todaysQueue.filter(item =>
     item.visitorName.toLowerCase().includes(queueSearch.toLowerCase()) ||
     item.hostName.toLowerCase().includes(queueSearch.toLowerCase()) ||
     item.purpose.toLowerCase().includes(queueSearch.toLowerCase())
   );
 
-  const filteredEmployees = employees.filter(e => 
+  const filteredEmployees = employees.filter(e =>
     e.fullName.toLowerCase().includes(empSearch.toLowerCase()) ||
     e.departmentName.toLowerCase().includes(empSearch.toLowerCase())
   );
@@ -3436,9 +3436,9 @@ export default function App() {
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Email Address</label>
-              <input 
-                type="email" 
-                className="form-input" 
+              <input
+                type="email"
+                className="form-input"
                 placeholder="security@vms.local"
                 value={loginEmail}
                 onChange={e => setLoginEmail(e.target.value)}
@@ -3447,9 +3447,9 @@ export default function App() {
             </div>
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Password</label>
-              <input 
-                type="password" 
-                className="form-input" 
+              <input
+                type="password"
+                className="form-input"
                 placeholder="••••••••"
                 value={loginPassword}
                 onChange={e => setLoginPassword(e.target.value)}
@@ -3465,9 +3465,9 @@ export default function App() {
                 <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
                   Please prove you are human: <strong>{captchaQuestion}</strong>
                 </div>
-                <input 
-                  type="text" 
-                  className="form-input" 
+                <input
+                  type="text"
+                  className="form-input"
                   placeholder="Enter answer"
                   value={captchaInput}
                   onChange={e => setCaptchaInput(e.target.value)}
@@ -3577,10 +3577,10 @@ export default function App() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ position: 'relative', width: '100%' }}>
-            <input 
-              type="text" 
-              className="form-input" 
-              placeholder="Filter queue by visitor, host..." 
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Filter queue by visitor, host..."
               value={queueSearch}
               onChange={e => setQueueSearch(e.target.value)}
               style={{ paddingLeft: '36px', height: '40px', fontSize: '0.85rem' }}
@@ -3588,8 +3588,8 @@ export default function App() {
             <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
           </div>
           {user.role === 'Receptionist' && (
-            <button 
-              className="btn btn-primary" 
+            <button
+              className="btn btn-primary"
               onClick={() => setShowPreRegModal(true)}
               style={{ width: '100%', justifyContent: 'center', height: '40px', fontSize: '0.85rem' }}
             >
@@ -3651,7 +3651,7 @@ export default function App() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--card-border)', paddingTop: '10px' }}>
                   <StatusIndicator status={item.status} />
-                  
+
                   <div style={{ display: 'flex', gap: '6px' }}>
                     {item.isBlacklisted ? (
                       <span style={{ background: '#ef4444', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600 }}>⚠️ BLACKLISTED</span>
@@ -3686,7 +3686,7 @@ export default function App() {
 
   const renderMobileSecurityArrivalsView = () => {
     return (
-      <div 
+      <div
         onTouchStart={handleTouchStartPull}
         onTouchMove={handleTouchMovePull}
         onTouchEnd={handleTouchEndPull}
@@ -3730,10 +3730,10 @@ export default function App() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
             <div style={{ position: 'relative', flex: 1 }}>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="Search today's arrivals..." 
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Search today's arrivals..."
                 value={queueSearch}
                 onChange={e => setQueueSearch(e.target.value)}
                 style={{ paddingLeft: '36px', height: '40px', fontSize: '0.85rem', width: '100%' }}
@@ -3755,8 +3755,8 @@ export default function App() {
               <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
             </button>
           </div>
-          <button 
-            className="btn btn-primary" 
+          <button
+            className="btn btn-primary"
             onClick={() => setShowPreRegModal(true)}
             style={{ width: '100%', justifyContent: 'center', height: '40px', fontSize: '0.85rem' }}
           >
@@ -3827,15 +3827,15 @@ export default function App() {
                     <StatusIndicator status={item.status} />
                     {item.isBlacklisted && <Badge tone="danger">⚠️ BLACKLISTED</Badge>}
                   </div>
-                  
+
                   {!item.isBlacklisted && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
                       {item.status === 'Expected' && (
                         <>
-                          <button 
-                            className="btn btn-primary" 
+                          <button
+                            className="btn btn-primary"
                             disabled={!!pendingActionId}
-                            style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} 
+                            style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }}
                             onClick={() => executeWithNetworkWatchdog(`arrive_${item.id}`, async () => { setShowArrivalPhotoModal(item.id); })}
                           >
                             {pendingActionId === `arrive_${item.id}` ? <Loader2 size={14} className="animate-spin" /> : 'Arrived'}
@@ -3847,10 +3847,10 @@ export default function App() {
                       )}
                       {item.status === 'Waiting' && (
                         <>
-                          <button 
-                            className="btn btn-primary" 
+                          <button
+                            className="btn btn-primary"
                             disabled={!!pendingActionId}
-                            style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} 
+                            style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }}
                             onClick={() => executeWithNetworkWatchdog(`checkin_${item.id}`, async () => { triggerCheckIn(item.id); })}
                           >
                             {pendingActionId === `checkin_${item.id}` ? <Loader2 size={14} className="animate-spin" /> : 'Check In'}
@@ -3861,10 +3861,10 @@ export default function App() {
                         </>
                       )}
                       {item.status === 'CheckedIn' && (
-                        <button 
-                          className="btn btn-danger" 
+                        <button
+                          className="btn btn-danger"
                           disabled={!!pendingActionId}
-                          style={{ gridColumn: 'span 2', padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} 
+                          style={{ gridColumn: 'span 2', padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }}
                           onClick={() => handleCheckOut(item.id)}
                         >
                           {pendingActionId === `checkout_${item.id}` ? <Loader2 size={14} className="animate-spin" /> : 'Check Out'}
@@ -3875,18 +3875,18 @@ export default function App() {
 
                   <div style={{ display: 'flex', gap: '8px', width: '100%', marginTop: '6px' }}>
                     {!item.isBlacklisted ? (
-                      <button 
-                        className="btn btn-secondary" 
-                        style={{ flex: 1, padding: '6px 10px', fontSize: '0.75rem', justifyContent: 'center', borderColor: '#ef4444', color: 'var(--color-danger)' }} 
+                      <button
+                        className="btn btn-secondary"
+                        style={{ flex: 1, padding: '6px 10px', fontSize: '0.75rem', justifyContent: 'center', borderColor: '#ef4444', color: 'var(--color-danger)' }}
                         onClick={() => setShowFlagBlacklistModal(item.visitorId)}
                       >
                         Flag Blacklist
                       </button>
                     ) : (
-                      <button 
-                        className="btn btn-warning" 
+                      <button
+                        className="btn btn-warning"
                         disabled={!!pendingActionId}
-                        style={{ flex: 1, padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center', fontWeight: 600 }} 
+                        style={{ flex: 1, padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center', fontWeight: 600 }}
                         onClick={() => handleSecurityNotifyHostBlacklisted(item)}
                       >
                         {pendingActionId === `notify_host_${item.id}` ? (
@@ -3907,7 +3907,7 @@ export default function App() {
   };
 
   const renderMobileCheckInviteView = () => {
-    const filtered = futureInvitations.filter((item: any) => 
+    const filtered = futureInvitations.filter((item: any) =>
       item.visitorName.toLowerCase().includes(inviteSearch.toLowerCase()) ||
       item.hostName.toLowerCase().includes(inviteSearch.toLowerCase())
     );
@@ -3924,12 +3924,12 @@ export default function App() {
           <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '4px' }}>Verify Visitor Invitation</h3>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', marginBottom: '12px' }}>Verify future invitations made by host/employees.</p>
           <div style={{ position: 'relative', width: '100%' }}>
-            <input 
-              type="text" 
-              className="form-input" 
-              placeholder="Search future invitations..." 
-              value={inviteSearch} 
-              onChange={e => setInviteSearch(e.target.value)} 
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Search future invitations..."
+              value={inviteSearch}
+              onChange={e => setInviteSearch(e.target.value)}
               style={{ paddingLeft: '36px', height: '38px', fontSize: '0.8rem' }}
             />
             <Search size={14} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
@@ -3950,7 +3950,7 @@ export default function App() {
               const isBl = item.isBlacklisted;
               const isFlagged = item.blacklistFlag === 'pending_review';
               const isToday = new Date(item.scheduledAt).toDateString() === new Date().toDateString();
-              
+
               return (
                 <div key={item.id} style={{
                   background: 'var(--card-bg)',
@@ -3998,15 +3998,15 @@ export default function App() {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--card-border)', paddingTop: '10px' }}>
                     <StatusIndicator status={item.status} />
-                    
+
                     <div style={{ display: 'flex', gap: '6px' }}>
                       {!isBl && ['Expected', 'Waiting'].includes(item.status) && isToday && (
                         <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem' }} onClick={() => setShowArrivalPhotoModal(item.id)}>
                           Mark Arrived
                         </button>
                       )}
-                      <button 
-                        className="btn btn-secondary" 
+                      <button
+                        className="btn btn-secondary"
                         style={{ padding: '6px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
                         onClick={() => {
                           setDetailPanelTab('general');
@@ -4027,7 +4027,7 @@ export default function App() {
   };
 
   const renderMobileSecurityHistoryView = () => {
-    const filtered = pastRecords.filter((item: any) => 
+    const filtered = pastRecords.filter((item: any) =>
       item.visitorName.toLowerCase().includes(pastSearch.toLowerCase()) ||
       item.hostName.toLowerCase().includes(pastSearch.toLowerCase()) ||
       item.visitorCompany.toLowerCase().includes(pastSearch.toLowerCase())
@@ -4045,12 +4045,12 @@ export default function App() {
           <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '4px' }}>Visitor History Log</h3>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', marginBottom: '12px' }}>Search and review completed &amp; past visitor records.</p>
           <div style={{ position: 'relative', width: '100%' }}>
-            <input 
-              type="text" 
-              className="form-input" 
-              placeholder="Search past logs..." 
-              value={pastSearch} 
-              onChange={e => setPastSearch(e.target.value)} 
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Search past logs..."
+              value={pastSearch}
+              onChange={e => setPastSearch(e.target.value)}
               style={{ paddingLeft: '36px', height: '38px', fontSize: '0.8rem' }}
             />
             <Search size={14} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
@@ -4130,10 +4130,10 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ position: 'relative', width: '100%' }}>
-            <input 
-              type="text" 
-              className="form-input" 
-              placeholder="Search host directory..." 
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Search host directory..."
               value={empSearch}
               onChange={e => setEmpSearch(e.target.value)}
               style={{ paddingLeft: '36px', height: '40px', fontSize: '0.85rem' }}
@@ -4141,8 +4141,8 @@ export default function App() {
             <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
           </div>
           {user.role === 'Admin' && (
-            <button 
-              className="btn btn-primary" 
+            <button
+              className="btn btn-primary"
               onClick={() => setShowAddEmpModal(true)}
               style={{ width: '100%', justifyContent: 'center', height: '40px', fontSize: '0.85rem' }}
             >
@@ -4243,9 +4243,9 @@ export default function App() {
               : 'All clear — no pending flags'}
           </p>
           {user.role === 'Admin' && (
-            <button 
-              className="btn btn-danger" 
-              style={{ width: '100%', justifyContent: 'center', marginTop: '12px', fontSize: '0.8rem', height: '36px' }} 
+            <button
+              className="btn btn-danger"
+              style={{ width: '100%', justifyContent: 'center', marginTop: '12px', fontSize: '0.8rem', height: '36px' }}
               onClick={() => setShowAddBlModal(true)}
             >
               <Plus size={14} />
@@ -4333,7 +4333,7 @@ export default function App() {
             <ShieldAlert size={18} style={{ color: 'var(--color-danger)' }} />
             Banned List ({confirmedBlacklisted.length})
           </h3>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
             {confirmedBlacklisted.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px 16px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '12px', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
@@ -4432,8 +4432,8 @@ export default function App() {
               <AreaChart data={analytics.weeklyTrend} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                 <defs>
                   <linearGradient id="mobileColorCount" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
@@ -4562,7 +4562,7 @@ export default function App() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--card-border)', paddingTop: '10px', flexWrap: 'wrap', gap: '8px' }}>
                   <StatusIndicator status={item.status} />
-                  
+
                   <div style={{ display: 'flex', gap: '6px' }}>
                     {item.status === 'Waiting' && (
                       <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => setShowDenyModal(item.id)}>
@@ -4571,14 +4571,14 @@ export default function App() {
                     )}
                     {item.status === 'Expected' && (
                       <>
-                        <select 
-                          className="form-input" 
+                        <select
+                          className="form-input"
                           defaultValue=""
                           onChange={(e) => {
                             const val = e.target.value;
                             if (val) {
                               handleDelayVisit(item.id, item.scheduledAt, parseInt(val));
-                              e.target.value = ""; 
+                              e.target.value = "";
                             }
                           }}
                           style={{ padding: '4px 8px', fontSize: '0.75rem', height: '30px', width: '90px', background: 'var(--menu-item-bg)' }}
@@ -4724,7 +4724,7 @@ export default function App() {
               const schedDate = new Date(item.scheduledAt);
               const daysFromNow = Math.ceil((schedDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
               const isThisWeek = daysFromNow <= 7;
-              
+
               return (
                 <div key={item.id} style={{
                   background: 'var(--card-bg)',
@@ -4823,7 +4823,7 @@ export default function App() {
       }}>
         <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '4px' }}>Invite Expected Guest</h3>
         <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>Pre-register visitor credentials for a future schedule.</p>
-        
+
         <form onSubmit={handlePreRegister} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Visitor Full Name *</label>
@@ -4858,10 +4858,10 @@ export default function App() {
               })()}
             </div>
             <div style={{ display: 'flex', gap: '6px' }}>
-              <select 
-                className="form-input" 
-                value={prePhoneCountryCode} 
-                onChange={e => setPrePhoneCountryCode(e.target.value)} 
+              <select
+                className="form-input"
+                value={prePhoneCountryCode}
+                onChange={e => setPrePhoneCountryCode(e.target.value)}
                 style={{ width: '85px', background: 'var(--menu-item-bg)', padding: '6px', height: '38px', fontSize: '0.8rem' }}
               >
                 <option value="+1">+1</option>
@@ -4871,12 +4871,12 @@ export default function App() {
                 <option value="+65">+65</option>
                 <option value="+971">+971</option>
               </select>
-              <input 
-                type="text" 
-                className="form-input" 
-                value={prePhone} 
-                onChange={e => setPrePhone(e.target.value)} 
-                placeholder="(555) 0199" 
+              <input
+                type="text"
+                className="form-input"
+                value={prePhone}
+                onChange={e => setPrePhone(e.target.value)}
+                placeholder="(555) 0199"
                 style={{ flex: 1, height: '38px', fontSize: '0.85rem' }}
               />
             </div>
@@ -4898,7 +4898,7 @@ export default function App() {
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Scheduled Date &amp; Time *</label>
             <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} max={getMaxFutureISOString()} style={{ height: '38px', fontSize: '0.85rem' }} />
-            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>* Dates more than 6 months from now cannot be selected.</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>* Dates further than 6 months from now cannot be selected.</div>
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: '4px', fontWeight: 600 }}>Purpose of Visit *</label>
@@ -4916,9 +4916,9 @@ export default function App() {
   const renderMobileView = () => {
     const menuItems = getMobileMenuItems();
     const currentItem = menuItems.find(item => item.view === currentView) || menuItems[0];
-    
+
     return (
-      <div 
+      <div
         className="mobile-app-layout"
         onTouchStart={(e) => {
           if (!isMobile) return;
@@ -4993,20 +4993,20 @@ export default function App() {
           flexShrink: 0
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img 
-              src="/123.png" 
-              alt="VMS Mobile Logo" 
-              style={{ 
-                height: '32px', 
-                width: 'auto', 
+            <img
+              src="/123.png"
+              alt="VMS Mobile Logo"
+              style={{
+                height: '32px',
+                width: 'auto',
                 objectFit: 'contain',
                 borderRadius: '6px'
-              }} 
+              }}
             />
             <span style={{ fontWeight: 700, fontSize: '1rem' }}>VMS Gateway</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button 
+            <button
               onClick={() => setDarkMode(!darkMode)}
               style={{
                 background: 'var(--btn-secondary-bg)',
@@ -5038,9 +5038,9 @@ export default function App() {
           flexDirection: 'column',
           gap: '16px'
         }}>
-          
+
           <div style={{ position: 'relative' }}>
-            <button 
+            <button
               onClick={() => setIsMobileMenuOpen(true)}
               style={{
                 width: '100%',
@@ -5148,7 +5148,7 @@ export default function App() {
                   <X size={20} />
                 </button>
               </div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {menuItems.map(item => {
                   const isActive = item.view === currentView;
@@ -5194,7 +5194,7 @@ export default function App() {
   };
 
   return (
-    <div 
+    <div
       className={isMobile ? "mobile-app-layout" : "app-layout"}
       style={isMobile ? { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' } : undefined}
     >
@@ -5204,470 +5204,301 @@ export default function App() {
         <>
           {/* Sidebar Navigation */}
           <nav className="sidebar">
-        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', borderBottom: '1px solid var(--card-border)' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'linear-gradient(135deg, #c84e3c, #e05a47)',
-            borderRadius: '12px',
-            padding: '8px',
-            color: '#fff',
-            boxShadow: '0 4px 12px rgba(224, 90, 71, 0.3)'
-          }}>
-            <Building size={20} />
-          </div>
-          <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>VMS Gateway</span>
-        </div>
-
-        <ul className="sidebar-menu">
-          {/* SECURITY TABS */}
-          {user.role === 'Security' && (
-            <>
-              <li>
-                <div 
-                  className={`menu-item ${currentView === 'security_arrivals' ? 'active' : ''}`}
-                  onClick={() => setCurrentView('security_arrivals')}
-                >
-                  <Clock size={18} strokeWidth={currentView === 'security_arrivals' ? 2.4 : 2} />
-                  <span>Today's Arrivals</span>
-                </div>
-              </li>
-              <li>
-                <div 
-                  className={`menu-item ${currentView === 'check_invite' ? 'active' : ''}`}
-                  onClick={() => setCurrentView('check_invite')}
-                >
-                  <Search size={18} strokeWidth={currentView === 'check_invite' ? 2.4 : 2} />
-                  <span>Check Invitation</span>
-                </div>
-              </li>
-              <li>
-                <div 
-                  className={`menu-item ${currentView === 'security_history' ? 'active' : ''}`}
-                  onClick={() => setCurrentView('security_history')}
-                >
-                  <History size={18} strokeWidth={currentView === 'security_history' ? 2.4 : 2} />
-                  <span>Past Records</span>
-                </div>
-              </li>
-              <li>
-                <div 
-                  className={`menu-item`}
-                  onClick={() => setShowPreRegModal(true)}
-                >
-                  <Plus size={18} strokeWidth={2} />
-                  <span>Register Walk-in</span>
-                </div>
-              </li>
-            </>
-          )}
-
-          {/* EMPLOYEE TABS */}
-          {user.role === 'Employee' && (
-            <>
-              <li>
-                <div 
-                  className={`menu-item ${currentView === 'employee_scheduled' ? 'active' : ''}`}
-                  onClick={() => {
-                    setCurrentView('employee_scheduled');
-                    fetchEmployeeVisits();
-                  }}
-                >
-                  <Clock size={18} strokeWidth={currentView === 'employee_scheduled' ? 2.4 : 2} />
-                  <span>Today's Scheduled</span>
-                </div>
-              </li>
-              <li>
-                <div 
-                  className={`menu-item ${currentView === 'employee_past' ? 'active' : ''}`}
-                  onClick={() => {
-                    setCurrentView('employee_past');
-                    fetchEmployeeVisits();
-                  }}
-                >
-                  <History size={18} strokeWidth={currentView === 'employee_past' ? 2.4 : 2} />
-                  <span>Past Hosted Visits</span>
-                </div>
-              </li>
-              <li>
-                <div 
-                  className={`menu-item ${currentView === 'employee_future' ? 'active' : ''}`}
-                  onClick={() => {
-                    setCurrentView('employee_future');
-                    fetchEmployeeVisits();
-                  }}
-                >
-                  <Calendar size={18} strokeWidth={currentView === 'employee_future' ? 2.4 : 2} />
-                  <span>My Future Visits</span>
-                </div>
-              </li>
-              <li>
-                <div 
-                  className={`menu-item ${currentView === 'employee_invite' ? 'active' : ''}`}
-                  onClick={() => setCurrentView('employee_invite')}
-                >
-                  <Plus size={18} strokeWidth={currentView === 'employee_invite' ? 2.4 : 2} />
-                  <span>Invite Future Guest</span>
-                </div>
-              </li>
-            </>
-          )}
-
-          {/* ADMIN TABS */}
-          {user.role === 'Admin' && (
-            <>
-              <li>
-                <div 
-                  className={`menu-item ${currentView === 'queue' ? 'active' : ''}`}
-                  onClick={() => setCurrentView('queue')}
-                >
-                  <Clock size={18} strokeWidth={currentView === 'queue' ? 2.4 : 2} />
-                  <span>Lobby Queue</span>
-                </div>
-              </li>
-              <li>
-                <div 
-                  className={`menu-item ${currentView === 'employees' ? 'active' : ''}`}
-                  onClick={() => setCurrentView('employees')}
-                >
-                  <Users size={18} strokeWidth={currentView === 'employees' ? 2.4 : 2} />
-                  <span>Company Directory</span>
-                </div>
-              </li>
-
-              <li>
-                <div 
-                  className={`menu-item ${currentView === 'blacklist_review' ? 'active' : ''}`}
-                  onClick={() => setCurrentView('blacklist_review')}
-                >
-                  <ShieldAlert size={18} strokeWidth={currentView === 'blacklist_review' ? 2.4 : 2} />
-                  <span>Blacklist Review Queue</span>
-                </div>
-              </li>
-              <li>
-                <div 
-                  className={`menu-item ${currentView === 'analytics' ? 'active' : ''}`}
-                  onClick={() => setCurrentView('analytics')}
-                >
-                  <BarChart2 size={18} strokeWidth={currentView === 'analytics' ? 2.4 : 2} />
-                  <span>Analytics</span>
-                </div>
-              </li>
-
-            </>
-          )}
-        </ul>
-
-
-
-        <div className="sidebar-footer">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingLeft: '8px' }}>
-            <Avatar name={user.fullName} size="md" online={true} />
-            <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{user.fullName}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{user.role}</div>
+            <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', borderBottom: '1px solid var(--card-border)' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, #c84e3c, #e05a47)',
+                borderRadius: '12px',
+                padding: '8px',
+                color: '#fff',
+                boxShadow: '0 4px 12px rgba(224, 90, 71, 0.3)'
+              }}>
+                <Building size={20} />
+              </div>
+              <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>VMS Gateway</span>
             </div>
-          </div>
-          <Button variant="danger" style={{ width: '100%' }} onClick={handleLogout} leftIcon={<LogOut size={14} />}>
-            Logout
-          </Button>
-        </div>
-      </nav>
 
-      {/* Main Panel Viewport */}
-      <main className="main-viewport">
-        {/* Top Navbar */}
-        <header className="top-navbar">
-          <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>
-            {currentView === 'queue' && "Lobby Visitor Queue"}
-            {currentView === 'employees' && "Company Directory"}
-
-            {currentView === 'analytics' && "Visitor Trend Analytics"}
-            {currentView === 'security_arrivals' && "Today's Arrivals (Security Gate)"}
-            {currentView === 'check_invite' && "Check Pre-Registration / Invitation"}
-            {currentView === 'security_history' && "Visitor History Log (Security)"}
-
-            {currentView === 'employee_scheduled' && "Today's Scheduled Visitors"}
-            {currentView === 'employee_past' && "Past Hosted Visits"}
-            {currentView === 'employee_future' && "My Future Visits"}
-            {currentView === 'employee_invite' && "Invite Future Visitors"}
-            {currentView === 'blacklist_review' && "Blacklist Flag Review Queue"}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button 
-              onClick={() => setDarkMode(!darkMode)}
-              className="btn btn-secondary"
-              style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {darkMode ? (
+            <ul className="sidebar-menu">
+              {/* SECURITY TABS */}
+              {user.role === 'Security' && (
                 <>
-                  <span style={{ display: 'flex' }}>☀️</span>
-                  <span style={{ fontSize: '0.8rem' }}>Light Mode</span>
-                </>
-              ) : (
-                <>
-                  <span style={{ display: 'flex' }}>🌙</span>
-                  <span style={{ fontSize: '0.8rem' }}>Dark Mode</span>
+                  <li>
+                    <div
+                      className={`menu-item ${currentView === 'security_arrivals' ? 'active' : ''}`}
+                      onClick={() => setCurrentView('security_arrivals')}
+                    >
+                      <Clock size={18} strokeWidth={currentView === 'security_arrivals' ? 2.4 : 2} />
+                      <span>Today's Arrivals</span>
+                    </div>
+                  </li>
+                  <li>
+                    <div
+                      className={`menu-item ${currentView === 'check_invite' ? 'active' : ''}`}
+                      onClick={() => setCurrentView('check_invite')}
+                    >
+                      <Search size={18} strokeWidth={currentView === 'check_invite' ? 2.4 : 2} />
+                      <span>Check Invitation</span>
+                    </div>
+                  </li>
+                  <li>
+                    <div
+                      className={`menu-item ${currentView === 'security_history' ? 'active' : ''}`}
+                      onClick={() => setCurrentView('security_history')}
+                    >
+                      <History size={18} strokeWidth={currentView === 'security_history' ? 2.4 : 2} />
+                      <span>Past Records</span>
+                    </div>
+                  </li>
+                  <li>
+                    <div
+                      className={`menu-item`}
+                      onClick={() => setShowPreRegModal(true)}
+                    >
+                      <Plus size={18} strokeWidth={2} />
+                      <span>Register Walk-in</span>
+                    </div>
+                  </li>
                 </>
               )}
-            </button>
-            <span style={{ fontSize: '0.85rem', background: 'var(--card-bg-subtle)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-glass)', color: 'var(--color-indigo-accent)' }}>
-              Active Branch: <strong>{user.branchName}</strong>
-            </span>
-          </div>
-        </header>
 
-        {/* Dynamic Inner Container */}
-        <div className="page-container">
-          
-          {alertMessage && (
-            <div style={{ 
-              background: alertMessage.type === 'success' ? 'var(--status-checkedin)' : 'var(--status-denied)', 
-              border: `1px solid ${alertMessage.type === 'success' ? 'var(--status-checkedin-text)' : 'var(--status-denied-text)'}`, 
-              borderRadius: '12px', 
-              padding: '16px', 
-              color: alertMessage.type === 'success' ? 'var(--status-checkedin-text)' : 'var(--status-denied-text)', 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              marginBottom: '24px',
-              fontWeight: 600
-            }}>
+              {/* EMPLOYEE TABS */}
+              {user.role === 'Employee' && (
+                <>
+                  <li>
+                    <div
+                      className={`menu-item ${currentView === 'employee_scheduled' ? 'active' : ''}`}
+                      onClick={() => {
+                        setCurrentView('employee_scheduled');
+                        fetchEmployeeVisits();
+                      }}
+                    >
+                      <Clock size={18} strokeWidth={currentView === 'employee_scheduled' ? 2.4 : 2} />
+                      <span>Today's Scheduled</span>
+                    </div>
+                  </li>
+                  <li>
+                    <div
+                      className={`menu-item ${currentView === 'employee_past' ? 'active' : ''}`}
+                      onClick={() => {
+                        setCurrentView('employee_past');
+                        fetchEmployeeVisits();
+                      }}
+                    >
+                      <History size={18} strokeWidth={currentView === 'employee_past' ? 2.4 : 2} />
+                      <span>Past Hosted Visits</span>
+                    </div>
+                  </li>
+                  <li>
+                    <div
+                      className={`menu-item ${currentView === 'employee_future' ? 'active' : ''}`}
+                      onClick={() => {
+                        setCurrentView('employee_future');
+                        fetchEmployeeVisits();
+                      }}
+                    >
+                      <Calendar size={18} strokeWidth={currentView === 'employee_future' ? 2.4 : 2} />
+                      <span>My Future Visits</span>
+                    </div>
+                  </li>
+                  <li>
+                    <div
+                      className={`menu-item ${currentView === 'employee_invite' ? 'active' : ''}`}
+                      onClick={() => setCurrentView('employee_invite')}
+                    >
+                      <Plus size={18} strokeWidth={currentView === 'employee_invite' ? 2.4 : 2} />
+                      <span>Invite Future Guest</span>
+                    </div>
+                  </li>
+                </>
+              )}
+
+              {/* ADMIN TABS */}
+              {user.role === 'Admin' && (
+                <>
+                  <li>
+                    <div
+                      className={`menu-item ${currentView === 'queue' ? 'active' : ''}`}
+                      onClick={() => setCurrentView('queue')}
+                    >
+                      <Clock size={18} strokeWidth={currentView === 'queue' ? 2.4 : 2} />
+                      <span>Lobby Queue</span>
+                    </div>
+                  </li>
+                  <li>
+                    <div
+                      className={`menu-item ${currentView === 'employees' ? 'active' : ''}`}
+                      onClick={() => setCurrentView('employees')}
+                    >
+                      <Users size={18} strokeWidth={currentView === 'employees' ? 2.4 : 2} />
+                      <span>Company Directory</span>
+                    </div>
+                  </li>
+
+                  <li>
+                    <div
+                      className={`menu-item ${currentView === 'blacklist_review' ? 'active' : ''}`}
+                      onClick={() => setCurrentView('blacklist_review')}
+                    >
+                      <ShieldAlert size={18} strokeWidth={currentView === 'blacklist_review' ? 2.4 : 2} />
+                      <span>Blacklist Review Queue</span>
+                    </div>
+                  </li>
+                  <li>
+                    <div
+                      className={`menu-item ${currentView === 'analytics' ? 'active' : ''}`}
+                      onClick={() => setCurrentView('analytics')}
+                    >
+                      <BarChart2 size={18} strokeWidth={currentView === 'analytics' ? 2.4 : 2} />
+                      <span>Analytics</span>
+                    </div>
+                  </li>
+
+                </>
+              )}
+            </ul>
+
+
+
+            <div className="sidebar-footer">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingLeft: '8px' }}>
+                <Avatar name={user.fullName} size="md" online={true} />
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{user.fullName}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{user.role}</div>
+                </div>
+              </div>
+              <Button variant="danger" style={{ width: '100%' }} onClick={handleLogout} leftIcon={<LogOut size={14} />}>
+                Logout
+              </Button>
+            </div>
+          </nav>
+
+          {/* Main Panel Viewport */}
+          <main className="main-viewport">
+            {/* Top Navbar */}
+            <header className="top-navbar">
+              <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>
+                {currentView === 'queue' && "Lobby Visitor Queue"}
+                {currentView === 'employees' && "Company Directory"}
+
+                {currentView === 'analytics' && "Visitor Trend Analytics"}
+                {currentView === 'security_arrivals' && "Today's Arrivals (Security Gate)"}
+                {currentView === 'check_invite' && "Check Pre-Registration / Invitation"}
+                {currentView === 'security_history' && "Visitor History Log (Security)"}
+
+                {currentView === 'employee_scheduled' && "Today's Scheduled Visitors"}
+                {currentView === 'employee_past' && "Past Hosted Visits"}
+                {currentView === 'employee_future' && "My Future Visits"}
+                {currentView === 'employee_invite' && "Invite Future Visitors"}
+                {currentView === 'blacklist_review' && "Blacklist Flag Review Queue"}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {alertMessage.type === 'success' ? <CheckCircle size={20} /> : <AlertOctagon size={20} />}
-                <span>{alertMessage.text}</span>
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                >
+                  {darkMode ? (
+                    <>
+                      <span style={{ display: 'flex' }}>☀️</span>
+                      <span style={{ fontSize: '0.8rem' }}>Light Mode</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ display: 'flex' }}>🌙</span>
+                      <span style={{ fontSize: '0.8rem' }}>Dark Mode</span>
+                    </>
+                  )}
+                </button>
+                <span style={{ fontSize: '0.85rem', background: 'var(--card-bg-subtle)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-glass)', color: 'var(--color-indigo-accent)' }}>
+                  Active Branch: <strong>{user.branchName}</strong>
+                </span>
               </div>
-              <button style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer' }} onClick={() => setAlertMessage(null)}>
-                <X size={16} />
-              </button>
-            </div>
-          )}
+            </header>
 
-          {/* VIEW: Security Arrivals */}
-          {currentView === 'security_arrivals' && (
-            <div>
-              <div className="table-card">
-                <div className="table-header">
-                  <div style={{ position: 'relative', width: '50%' }}>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="Search today's arrivals..." 
-                      value={queueSearch}
-                      onChange={e => setQueueSearch(e.target.value)}
-                      style={{ paddingLeft: '36px' }}
-                    />
-                    <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+            {/* Dynamic Inner Container */}
+            <div className="page-container">
+
+              {alertMessage && (
+                <div style={{
+                  background: alertMessage.type === 'success' ? 'var(--status-checkedin)' : 'var(--status-denied)',
+                  border: `1px solid ${alertMessage.type === 'success' ? 'var(--status-checkedin-text)' : 'var(--status-denied-text)'}`,
+                  borderRadius: '12px',
+                  padding: '16px',
+                  color: alertMessage.type === 'success' ? 'var(--status-checkedin-text)' : 'var(--status-denied-text)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '24px',
+                  fontWeight: 600
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {alertMessage.type === 'success' ? <CheckCircle size={20} /> : <AlertOctagon size={20} />}
+                    <span>{alertMessage.text}</span>
                   </div>
+                  <button style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer' }} onClick={() => setAlertMessage(null)}>
+                    <X size={16} />
+                  </button>
                 </div>
+              )}
 
-                <div className="table-wrapper">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Visitor Details</th>
-                        <th>Classification</th>
-                        <th>Host Employee</th>
-                        <th>Purpose of Visit</th>
-                        <th>Scheduled Time</th>
-                        <th>Status</th>
-                        <th style={{ textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeArrivalsToday.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} style={{ padding: '32px' }}>
-                            <EmptyState icon={Users} title="No Visitors Scheduled" description="There are no visits scheduled at the gate for today." />
-                          </td>
-                        </tr>
-                      ) : filteredArrivals.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} style={{ padding: '32px' }}>
-                            <EmptyState icon={Search} title="No Matches Found" description="No matching arrivals found for today." />
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredArrivals.map((item) => (
-                          <tr key={item.id}>
-                            <td style={{ padding: '16px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
-                                <div>
-                                  <div style={{ fontWeight: 600 }}>{item.visitorName}</div>
-                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span>{item.visitorCompany || 'Independent'}</span>
-                                    <span style={{ opacity: 0.4 }}>•</span>
-                                    <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                {item.additionalGuests > 0 ? (
-                                  <Badge tone="warning">
-                                    +{item.additionalGuests} Guests
-                                  </Badge>
-                                ) : (
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>No guests</span>
-                                )}
-                              </div>
-                            </td>
-                            <td>
-                              <div style={{ fontWeight: 500 }}>{item.hostName}</div>
-                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{item.hostPhone}</div>
-                            </td>
-                            <td>{item.purpose}</td>
-                            <td>
-                              {item.scheduledAt ? new Date(item.scheduledAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Today'}
-                            </td>
-                            <td>
-                              <StatusIndicator status={item.status} />
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
-                                {item.isBlacklisted ? (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-                                    <Badge tone="danger">⚠️ BLACKLISTED</Badge>
-                                    <Button 
-                                      variant="primary" 
-                                      disabled={!!pendingActionId}
-                                      style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 600, background: '#f59e0b', color: '#fff', border: 'none' }}
-                                      onClick={() => handleSecurityNotifyHostBlacklisted(item)}
-                                    >
-                                      {pendingActionId === `notify_host_${item.id}` ? (
-                                        <Loader2 size={14} className="animate-spin" />
-                                      ) : (
-                                        '🔔 Notify Host'
-                                      )}
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <>
-                                    {item.status === 'Expected' && (
-                                      <>
-                                        <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowArrivalPhotoModal(item.id)}>
-                                          Mark Arrived
-                                        </Button>
-                                        <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
-                                          Deny Entry
-                                        </Button>
-                                      </>
-                                    )}
-                                    {item.status === 'Waiting' && (
-                                      <>
-                                        <Button variant="primary" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => triggerCheckIn(item.id)} leftIcon={<CheckCircle size={12} />}>
-                                          Check In
-                                        </Button>
-                                        <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
-                                          Deny Entry
-                                        </Button>
-                                      </>
-                                    )}
-                                    {item.status === 'CheckedIn' && (
-                                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                        <Badge tone="success">✓ Checked In</Badge>
-                                        <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleCheckOut(item.id)}>
-                                          Check Out
-                                        </Button>
-                                      </div>
-                                    )}
-                                    <Button variant="secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', borderColor: '#ef4444', color: 'var(--color-danger)' }} onClick={() => setShowFlagBlacklistModal(item.visitorId)}>
-                                      Flag
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
+              {/* VIEW: Security Arrivals */}
+              {currentView === 'security_arrivals' && (
+                <div>
+                  <div className="table-card">
+                    <div className="table-header">
+                      <div style={{ position: 'relative', width: '50%' }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="Search today's arrivals..."
+                          value={queueSearch}
+                          onChange={e => setQueueSearch(e.target.value)}
+                          style={{ paddingLeft: '36px' }}
+                        />
+                        <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+                      </div>
+                    </div>
+
+                    <div className="table-wrapper">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Visitor Details</th>
+                            <th>Classification</th>
+                            <th>Host Employee</th>
+                            <th>Purpose of Visit</th>
+                            <th>Scheduled Time</th>
+                            <th>Status</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* VIEW: Check Invitation */}
-          {currentView === 'check_invite' && (
-            <div>
-              <div style={{ background: 'var(--card-bg-subtle)', border: '1px solid var(--card-border)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px' }}>Verify Visitor Invitation</h3>
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginBottom: '20px' }}>
-                  Verify future invitations made by host/employees.
-                </p>
-
-                <div style={{ position: 'relative', width: '100%' }}>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="Search future invitations by visitor or host name..." 
-                    value={inviteSearch} 
-                    onChange={e => setInviteSearch(e.target.value)} 
-                    style={{ paddingLeft: '36px' }}
-                  />
-                  <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
-                </div>
-              </div>
-
-              <div className="table-card">
-                <div className="table-header">
-                  <div style={{ fontWeight: 600 }}>Future Scheduled Invitations</div>
-                </div>
-                <div className="table-wrapper">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Visitor Name</th>
-                        <th>Company / Classification</th>
-                        <th>Host Employee</th>
-                        <th>Scheduled Time</th>
-                        <th>Status</th>
-                        <th style={{ textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {futureInvitations.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} style={{ padding: '32px' }}>
-                            <EmptyState icon={Users} title="No Future Invitations" description="No future invitations scheduled." />
-                          </td>
-                        </tr>
-                      ) : (
-                        (() => {
-                          const filtered = futureInvitations.filter((item: any) => 
-                            item.visitorName.toLowerCase().includes(inviteSearch.toLowerCase()) ||
-                            item.hostName.toLowerCase().includes(inviteSearch.toLowerCase())
-                          );
-                          if (filtered.length === 0) {
-                            return (
-                              <tr>
-                                <td colSpan={6} style={{ padding: '32px' }}>
-                                  <EmptyState icon={Search} title="No Matches Found" description="No matching invitations found." />
-                                </td>
-                              </tr>
-                            );
-                          }
-                          return filtered.map((item: any) => {
-                            const isBl = item.isBlacklisted;
-                            const isFlagged = item.blacklistFlag === 'pending_review';
-                            return (
-                              <tr key={item.id} style={{ background: isBl ? 'rgba(239, 68, 68, 0.05)' : '' }}>
-                                <td>
+                        </thead>
+                        <tbody>
+                          {activeArrivalsToday.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} style={{ padding: '32px' }}>
+                                <EmptyState icon={Users} title="No Visitors Scheduled" description="There are no visits scheduled at the gate for today." />
+                              </td>
+                            </tr>
+                          ) : filteredArrivals.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} style={{ padding: '32px' }}>
+                                <EmptyState icon={Search} title="No Matches Found" description="No matching arrivals found for today." />
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredArrivals.map((item) => (
+                              <tr key={item.id}>
+                                <td style={{ padding: '16px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
                                     <div>
-                                      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span>{item.visitorName}</span>
-                                        {isBl && <Badge tone="danger">⚠️ BLACKLISTED</Badge>}
-                                        {isFlagged && <Badge tone="warning">⚠️ PENDING REVIEW</Badge>}
-                                      </div>
+                                      <div style={{ fontWeight: 600 }}>{item.visitorName}</div>
                                       <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <span>{item.visitorEmail || 'No email provided'}</span>
+                                        <span>{item.visitorCompany || 'Independent'}</span>
                                         <span style={{ opacity: 0.4 }}>•</span>
                                         <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
                                       </div>
@@ -5675,1615 +5506,1784 @@ export default function App() {
                                   </div>
                                 </td>
                                 <td>
-                                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-primary)' }}>
-                                    {item.visitorCompany || 'Independent'}
-                                  </span>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {item.additionalGuests > 0 ? (
+                                      <Badge tone="warning">
+                                        +{item.additionalGuests} Guests
+                                      </Badge>
+                                    ) : (
+                                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>No guests</span>
+                                    )}
+                                  </div>
                                 </td>
-                                <td>{item.hostName || 'N/A'}</td>
                                 <td>
-                                  <div>{new Date(item.scheduledAt).toLocaleString()}</div>
-                                  {new Date(item.scheduledAt).toDateString() === new Date().toDateString() ? (
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', fontWeight: 600 }}>• Today's Booking</span>
-                                  ) : (
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 600 }}>• Future Booking</span>
-                                  )}
+                                  <div style={{ fontWeight: 500 }}>{item.hostName}</div>
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{item.hostPhone}</div>
+                                </td>
+                                <td>{item.purpose}</td>
+                                <td>
+                                  {item.scheduledAt ? new Date(item.scheduledAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Today'}
                                 </td>
                                 <td>
                                   <StatusIndicator status={item.status} />
                                 </td>
                                 <td style={{ textAlign: 'right' }}>
-                                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                    {isBl && (
-                                      <Button 
-                                        variant="primary" 
-                                        disabled={!!pendingActionId}
-                                        style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 600, background: '#f59e0b', color: '#fff', border: 'none' }}
-                                        onClick={() => handleSecurityNotifyHostBlacklisted(item)}
-                                      >
-                                        {pendingActionId === `notify_host_${item.id}` ? (
-                                          <Loader2 size={14} className="animate-spin" />
-                                        ) : (
-                                          '🔔 Notify Host'
-                                        )}
-                                      </Button>
-                                    )}
-                                    {!isBl && ['Expected', 'Waiting'].includes(item.status) && (
-                                      (() => {
-                                        const isToday = new Date(item.scheduledAt).toDateString() === new Date().toDateString();
-                                        if (isToday) {
-                                          return (
+                                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    {item.isBlacklisted ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                                        <Badge tone="danger">⚠️ BLACKLISTED</Badge>
+                                        <Button
+                                          variant="primary"
+                                          disabled={!!pendingActionId}
+                                          style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 600, background: '#f59e0b', color: '#fff', border: 'none' }}
+                                          onClick={() => handleSecurityNotifyHostBlacklisted(item)}
+                                        >
+                                          {pendingActionId === `notify_host_${item.id}` ? (
+                                            <Loader2 size={14} className="animate-spin" />
+                                          ) : (
+                                            '🔔 Notify Host'
+                                          )}
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        {item.status === 'Expected' && (
+                                          <>
                                             <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowArrivalPhotoModal(item.id)}>
                                               Mark Arrived
                                             </Button>
-                                          );
-                                        } else {
-                                          return (
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', background: 'var(--card-bg-subtle)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--card-border)' }}>
-                                              Actions Locked (Future Visit)
-                                            </span>
-                                          );
-                                        }
-                                      })()
-                                    )}
-                                    <Button
-                                      variant="secondary"
-                                      style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}
-                                      onClick={() => {
-                                        setDetailPanelTab('general');
-                                        setSelectedInviteDetails({ ...item, hostDept: item.hostDept || '' });
-                                      }}
-                                    >
-                                      <FileText size={13} /> Details
-                                    </Button>
-                                    <Button variant="secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', borderColor: '#ef4444', color: 'var(--color-danger)' }} onClick={() => setShowFlagBlacklistModal(item.visitorId)}>
-                                      Flag Blacklist
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          });
-                        })()
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* VIEW: Past Records (Security History) */}
-          {currentView === 'security_history' && (
-            <div>
-              <div style={{ background: 'var(--card-bg-subtle)', border: '1px solid var(--card-border)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px' }}>Visitor History Log</h3>
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginBottom: '20px' }}>
-                  Search and review past visitor entries, completions, and check-out logs.
-                </p>
-
-                <div style={{ position: 'relative', width: '100%' }}>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="Search past logs by visitor or host name..." 
-                    value={pastSearch} 
-                    onChange={e => setPastSearch(e.target.value)} 
-                    style={{ paddingLeft: '36px' }}
-                  />
-                  <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
-                </div>
-              </div>
-
-              <div className="table-card">
-                <div className="table-header">
-                  <div style={{ fontWeight: 600 }}>Completed &amp; Past Visits</div>
-                </div>
-                <div className="table-wrapper">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Visitor Details</th>
-                        <th>Host Employee</th>
-                        <th>Visit Purpose / Badge</th>
-                        <th>Visit Schedule &amp; Timings</th>
-                        <th>Final Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pastRecords.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} style={{ padding: '32px' }}>
-                            <EmptyState icon={History} title="No Past Records" description="No past visitor logs or historical records found." />
-                          </td>
-                        </tr>
-                      ) : (
-                        (() => {
-                          const filtered = pastRecords.filter((item: any) => 
-                            item.visitorName.toLowerCase().includes(pastSearch.toLowerCase()) ||
-                            item.hostName.toLowerCase().includes(pastSearch.toLowerCase()) ||
-                            item.visitorCompany.toLowerCase().includes(pastSearch.toLowerCase())
-                          );
-                          if (filtered.length === 0) {
-                            return (
-                              <tr>
-                                <td colSpan={5} style={{ padding: '32px' }}>
-                                  <EmptyState icon={Search} title="No Matches Found" description="No matching past records found." />
-                                </td>
-                              </tr>
-                            );
-                          }
-                          return filtered.map((item: any) => (
-                            <tr key={item.id} style={{ 
-                              borderBottom: '1px solid var(--card-border)',
-                              transition: 'background 0.2s',
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
-                                  
-                                  {/* Details */}
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                                      <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{item.visitorName}</span>
-                                      {item.isBlacklisted && <Badge tone="danger">⚠️ BLACKLISTED</Badge>}
-                                      
-                                      {item.additionalGuests > 0 && (
-                                        <Badge tone="warning">
-                                          +{item.additionalGuests} Guests
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Company Info & Visitor Type under name */}
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
-                                      <span>🏢 {item.visitorCompany || 'Independent'}</span>
-                                      <span style={{ opacity: 0.4 }}>•</span>
-                                      <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
-                                    </div>
-                                    
-                                    {/* Location Info */}
-                                    {item.visitorLocation && (
-                                      <div style={{ fontSize: '0.8rem', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <span>📍 Origin:</span>
-                                        <span style={{ color: 'var(--color-warning)', fontWeight: 500 }}>{item.visitorLocation}</span>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Contact Details */}
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                                      {item.visitorEmail && (
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                          <span style={{ color: 'var(--color-text-secondary)' }}>✉️</span> {item.visitorEmail}
-                                        </span>
-                                      )}
-                                      {item.visitorPhone && (
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                          <span style={{ color: 'var(--color-text-secondary)' }}>📞</span> {item.visitorPhone}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-
-                              <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                  <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{item.hostName}</span>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                      🏢 {item.department || 'General'}
-                                    </span>
-                                    {item.hostFloor && (
-                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                        📍 Floor {item.hostFloor}
-                                      </span>
-                                    )}
-                                    {item.hostPhone && (
-                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                                        📞 {item.hostPhone}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-
-                              <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                  <div style={{ 
-                                    fontSize: '0.8rem', 
-                                    color: 'var(--color-text-primary)', 
-                                    fontStyle: 'italic', 
-                                    lineHeight: '1.4',
-                                    background: 'var(--card-bg-subtle)',
-                                    padding: '8px 12px',
-                                    borderRadius: '8px',
-                                    borderLeft: '3px solid var(--indigo-primary)'
-                                  }}>
-                                    "{item.purpose}"
-                                  </div>
-                                  {item.badgeNumber && item.badgeNumber !== 'N/A' && (
-                                    <div style={{ alignSelf: 'flex-start' }}>
-                                      <CredentialBadge label="Badge" value={item.badgeNumber} />
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-
-                              <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.75rem' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-primary)' }}>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>📅</span>
-                                    <span style={{ fontWeight: 500 }}>
-                                      {new Date(item.scheduledAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                                    </span>
-                                  </div>
-                                  
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px dashed var(--card-border)', paddingLeft: '8px', marginLeft: '4px', marginTop: '4px' }}>
-                                    <div style={{ color: 'var(--color-text-secondary)' }}>
-                                      Scheduled: <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{new Date(item.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                    </div>
-                                    
-                                    {item.checkedInAt && (
-                                      <div style={{ color: 'var(--color-success)' }}>
-                                        🟢 Checked In: <span style={{ fontWeight: 500 }}>{new Date(item.checkedInAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                                      </div>
-                                    )}
-
-                                    {item.checkedOutAt && (
-                                      <div style={{ color: 'var(--color-danger)' }}>
-                                        🔴 Checked Out: <span style={{ fontWeight: 500 }}>{new Date(item.checkedOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                      </div>
-                                    )}
-
-                                    {item.deniedReason && (
-                                      <div style={{ 
-                                        color: 'var(--color-danger)', 
-                                        background: 'rgba(239, 68, 68, 0.1)', 
-                                        padding: '4px 8px', 
-                                        borderRadius: '4px', 
-                                        marginTop: '4px', 
-                                        border: '1px solid rgba(239, 68, 68, 0.15)',
-                                        fontSize: '0.7rem' 
-                                      }}>
-                                        ⚠️ Deny Reason: {item.deniedReason}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-
-                              <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
-                                <StatusIndicator status={item.status} />
-                              </td>
-                            </tr>
-                          ));
-                        })()
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-
-
-          {/* VIEW: Employee - Today's Scheduled Visitors */}
-          {currentView === 'employee_scheduled' && (() => {
-            const todayStr = new Date().toDateString();
-            const todayScheduledVisits = employeeVisits.filter((item: any) => {
-              const schedDateStr = new Date(item.scheduledAt).toDateString();
-              const isActive = ['Expected', 'Waiting', 'CheckedIn'].includes(item.status);
-              return schedDateStr === todayStr && isActive;
-            });
-
-            return (
-              <div>
-                <div className="table-card" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-                  <div className="table-header" style={{ borderBottom: '1px solid var(--card-border)' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-text-primary)' }}>Today's Scheduled Visitors</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Active visitor schedules for the current date</div>
-                    </div>
-                  </div>
-
-                  <div className="table-wrapper">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Visitor</th>
-                          <th>Purpose</th>
-                          <th>Expected Arrival</th>
-                          <th>Status</th>
-                          <th style={{ textAlign: 'right' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {todayScheduledVisits.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} style={{ padding: '32px' }}>
-                              <EmptyState icon={Clock} title="No Scheduled Visitors Today" description="No visitors scheduled for today. Need to host someone? Pre-register them in the Invite Future Guest tab." />
-                            </td>
-                          </tr>
-                        ) : (
-                          todayScheduledVisits.map((item: any) => (
-                            <tr key={item.id} style={{ 
-                              borderBottom: '1px solid var(--card-border)',
-                              transition: 'background 0.2s',
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
-                                  
-                                  {/* Details */}
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                                      <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{item.visitorName}</span>
-                                      
-                                      {item.additionalGuests > 0 && (
-                                        <Badge tone="warning">
-                                          +{item.additionalGuests} Guests
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Company Info & Visitor Type under name */}
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
-                                      <span>🏢 {item.visitorCompany || 'Independent'}</span>
-                                      <span style={{ opacity: 0.4 }}>•</span>
-                                      <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
-                                    </div>
- 
-                                    {/* Location Info */}
-                                    {item.visitorLocation && (
-                                      <div style={{ fontSize: '0.8rem', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <span>📍 Origin:</span>
-                                        <span style={{ color: 'var(--color-warning)', fontWeight: 500 }}>{item.visitorLocation}</span>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Contact Details */}
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                                      {item.visitorEmail && (
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                          <span style={{ color: 'var(--color-text-secondary)' }}>✉️</span> {item.visitorEmail}
-                                        </span>
-                                      )}
-                                      {item.visitorPhone && (
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                          <span style={{ color: 'var(--color-text-secondary)' }}>📞</span> {item.visitorPhone}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-
-                              <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
-                                <div style={{ 
-                                  fontSize: '0.8rem', 
-                                  color: 'var(--color-text-primary)', 
-                                  fontStyle: 'italic', 
-                                  lineHeight: '1.4',
-                                  background: 'var(--card-bg-subtle)',
-                                  padding: '8px 12px',
-                                  borderRadius: '8px',
-                                  borderLeft: '3px solid #6366f1'
-                                }}>
-                                  "{item.purpose}"
-                                </div>
-                              </td>
-
-                              <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.75rem' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-primary)', fontWeight: 600 }}>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>⏰</span>
-                                    <span>{new Date(item.scheduledAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                                  </div>
-                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{new Date(item.scheduledAt).toLocaleDateString(undefined, { weekday: 'long' })}</div>
-                                </div>
-                              </td>
-
-                              <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
-                                <StatusIndicator status={item.status} />
-                              </td>
-
-                              <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
-                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                  {item.status === 'Waiting' && (
-                                    <>
-                                      <Button variant="danger" style={{ 
-                                        padding: '8px 16px', 
-                                        fontSize: '0.8rem',
-                                        fontWeight: 600,
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
-                                      }} onClick={() => setShowDenyModal(item.id)}>
-                                        Deny
-                                      </Button>
-                                    </>
-                                  )}
-                                  {item.status === 'Expected' && (
-                                    <>
-                                      <select 
-                                        className="form-input" 
-                                        defaultValue=""
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          if (val) {
-                                            handleDelayVisit(item.id, item.scheduledAt, parseInt(val));
-                                            e.target.value = ""; 
-                                          }
-                                        }}
-                                        style={{ 
-                                          padding: '6px 12px', 
-                                          fontSize: '0.8rem', 
-                                          height: '36px', 
-                                          background: 'var(--menu-item-bg)', 
-                                          border: '1px solid var(--card-border)', 
-                                          borderRadius: '8px', 
-                                          color: 'var(--color-text-primary)', 
-                                          cursor: 'pointer',
-                                          fontWeight: 500
-                                        }}
-                                      >
-                                        <option value="" disabled>⏳ Delay Visit...</option>
-                                        <option value="15">Delay 15 Min</option>
-                                        <option value="30">Delay 30 Min</option>
-                                        <option value="45">Delay 45 Min</option>
-                                        <option value="60">Delay 1 Hour</option>
-                                      </select>
-                                      <Button variant="danger" style={{ 
-                                        padding: '6px 14px', 
-                                        fontSize: '0.8rem', 
-                                        height: '36px',
-                                        fontWeight: 600,
-                                        borderRadius: '8px',
-                                        cursor: 'pointer'
-                                      }} onClick={() => handleEmployeeCancelVisit(item.id)}>
-                                        Cancel Visit
-                                      </Button>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* VIEW: Employee - Past Hosted Visitors */}
-          {currentView === 'employee_past' && (() => {
-            const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-            const pastHostedVisits = employeeVisits.filter((item: any) => {
-              if (!item.scheduledAt) return false;
-              const schedDate = new Date(item.scheduledAt);
-              const isPast = schedDate < todayStart;
-              const isFinalized = ['CheckedOut', 'Denied', 'Cancelled', 'cancellation_pending_reception'].includes(item.status);
-              return isPast || isFinalized;
-            });
-
-            return (
-              <div>
-                <div className="table-card" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-                  <div className="table-header" style={{ borderBottom: '1px solid var(--card-border)' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-text-primary)' }}>Past Hosted Visits Log</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Historical visitor entries hosted by you</div>
-                    </div>
-                  </div>
-
-                  <div className="table-wrapper">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Visitor</th>
-                          <th>Purpose</th>
-                          <th>Schedule &amp; Timing Details</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pastHostedVisits.length === 0 ? (
-                          <tr>
-                            <td colSpan={4} style={{ padding: '32px' }}>
-                              <EmptyState icon={History} title="No Historical Visits" description="No historical visit logs found." />
-                            </td>
-                          </tr>
-                        ) : (
-                          pastHostedVisits.map((item: any) => (
-                            <tr key={item.id} style={{ 
-                              borderBottom: '1px solid var(--card-border)',
-                              transition: 'background 0.2s',
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                                  <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
-                                  
-                                  {/* Details */}
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                                      <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{item.visitorName}</span>
-                                      
-                                      {item.additionalGuests > 0 && (
-                                        <Badge tone="warning">
-                                          +{item.additionalGuests} Guests
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Company Info & Visitor Type under name */}
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
-                                      <span>🏢 {item.visitorCompany || 'Independent'}</span>
-                                      <span style={{ opacity: 0.4 }}>•</span>
-                                      <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
-                                    </div>
-
-                                    {/* Location Info */}
-                                    {item.visitorLocation && (
-                                      <div style={{ fontSize: '0.8rem', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <span>📍 Origin:</span>
-                                        <span style={{ color: 'var(--color-warning)', fontWeight: 500 }}>{item.visitorLocation}</span>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Contact Details */}
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                                      {item.visitorEmail && (
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                          <span style={{ color: 'var(--color-text-secondary)' }}>✉️</span> {item.visitorEmail}
-                                        </span>
-                                      )}
-                                      {item.visitorPhone && (
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                          <span style={{ color: 'var(--color-text-secondary)' }}>📞</span> {item.visitorPhone}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-
-                              <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
-                                <div style={{ 
-                                  fontSize: '0.8rem', 
-                                  color: 'var(--color-text-primary)', 
-                                  fontStyle: 'italic', 
-                                  lineHeight: '1.4',
-                                  background: 'var(--card-bg-subtle)',
-                                  padding: '8px 12px',
-                                  borderRadius: '8px',
-                                  borderLeft: '3px solid #6366f1'
-                                }}>
-                                  "{item.purpose}"
-                                </div>
-                              </td>
-
-                              <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.75rem' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-primary)' }}>
-                                    <span style={{ color: 'var(--color-text-secondary)' }}>📅</span>
-                                    <span style={{ fontWeight: 500 }}>
-                                      {new Date(item.scheduledAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                                    </span>
-                                  </div>
-                                  
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px dashed var(--card-border)', paddingLeft: '8px', marginLeft: '4px', marginTop: '4px' }}>
-                                    <div style={{ color: 'var(--color-text-secondary)' }}>
-                                      Scheduled: <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{new Date(item.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                    </div>
-                                    
-                                    {item.checkedInAt && (
-                                      <div style={{ color: 'var(--color-success)' }}>
-                                        🟢 Checked In: <span style={{ fontWeight: 500 }}>{new Date(item.checkedInAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                                      </div>
-                                    )}
-
-                                    {item.checkedOutAt && (
-                                      <div style={{ color: 'var(--color-danger)' }}>
-                                        🔴 Checked Out: <span style={{ fontWeight: 500 }}>{new Date(item.checkedOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                      </div>
-                                    )}
-
-                                    {item.deniedReason && (
-                                      <div style={{ 
-                                        color: 'var(--color-danger)', 
-                                        background: 'rgba(239, 68, 68, 0.1)', 
-                                        padding: '4px 8px', 
-                                        borderRadius: '4px', 
-                                        marginTop: '4px', 
-                                        border: '1px solid rgba(239, 68, 68, 0.15)',
-                                        fontSize: '0.7rem' 
-                                      }}>
-                                        ⚠️ Deny Reason: {item.deniedReason}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-
-                              <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
-                                <StatusIndicator status={item.status} />
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* VIEW: Employee - My Future Visits */}
-          {currentView === 'employee_future' && (() => {
-
-            const now = new Date();
-            const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-            const futureVisits = employeeVisits.filter((item: any) => {
-              if (!item.scheduledAt) return false;
-              const schedDate = new Date(item.scheduledAt);
-              const isFuture = schedDate > todayEnd;
-              const isNotFinalized = !['CheckedOut', 'Denied', 'Cancelled', 'cancellation_pending_reception'].includes(item.status);
-              return isFuture && isNotFinalized;
-            }).sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-
-            return (
-              <div>
-                <div className="table-card" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-                  <div className="table-header" style={{ borderBottom: '1px solid var(--card-border)' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Calendar size={20} style={{ color: 'var(--indigo-primary)' }} />
-                        Upcoming Scheduled Visitors
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Future visits where you are the host. Read-only — add a remark to help security prepare.</div>
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--indigo-primary)', fontWeight: 600, background: 'rgba(200, 78, 60, 0.08)', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(200, 78, 60, 0.2)' }}>
-                      {futureVisits.length} Upcoming Visit{futureVisits.length !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                  <div className="table-container">
-                    {loading ? (
-                      <div style={{ textAlign: 'center', padding: '48px', color: 'var(--color-text-secondary)' }}>
-                        <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
-                        <div>Loading future visits…</div>
-                      </div>
-                    ) : futureVisits.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '60px', color: 'var(--color-text-secondary)' }}>
-                        <Calendar size={40} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
-                        <div style={{ fontSize: '1rem', fontWeight: 500 }}>No upcoming visits scheduled</div>
-                        <div style={{ fontSize: '0.8rem', marginTop: '6px', color: 'var(--color-text-secondary)' }}>Use <strong style={{ color: 'var(--color-text-secondary)' }}>Invite Future Guest</strong> to pre-register visitors</div>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '8px 0' }}>
-                        {futureVisits.map((item: any) => {
-                          const schedDate = new Date(item.scheduledAt);
-                          const daysFromNow = Math.ceil((schedDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                          const isThisWeek = daysFromNow <= 7;
-                          return (
-                            <div key={item.id} style={{
-                              background: darkMode ? 'rgba(255,255,255,0.025)' : 'var(--card-bg-subtle)',
-                              border: '1px solid var(--card-border)',
-                              borderRadius: '12px',
-                              padding: '20px 24px',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'flex-start',
-                              gap: '20px',
-                              transition: 'border-color 0.2s',
-                            }}
-                              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--indigo-primary)')}
-                              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--card-border)')}
-                            >
-                              {/* LEFT: Visitor Info */}
-                              <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flex: 1 }}>
-                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="lg" src={item.photoUrl || undefined} />
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text-primary)', marginBottom: '4px' }}>
-                                    {item.visitorName}
-                                  </div>
-                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                    <span>🏢 {item.visitorCompany || 'Independent'}</span>
-                                    <span style={{ opacity: 0.4 }}>•</span>
-                                    <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
-                                    {item.visitorEmail && (
-                                      <>
-                                        <span style={{ opacity: 0.4 }}>•</span>
-                                        <span>✉ {item.visitorEmail}</span>
+                                            <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
+                                              Deny Entry
+                                            </Button>
+                                          </>
+                                        )}
+                                        {item.status === 'Waiting' && (
+                                          <>
+                                            <Button variant="primary" style={{ padding: '6px 14px', fontSize: '0.8rem' }} onClick={() => triggerCheckIn(item.id)} leftIcon={<CheckCircle size={12} />}>
+                                              Check In
+                                            </Button>
+                                            <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
+                                              Deny Entry
+                                            </Button>
+                                          </>
+                                        )}
+                                        {item.status === 'CheckedIn' && (
+                                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            <Badge tone="success">✓ Checked In</Badge>
+                                            <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleCheckOut(item.id)}>
+                                              Check Out
+                                            </Button>
+                                          </div>
+                                        )}
+                                        <Button variant="secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', borderColor: '#ef4444', color: 'var(--color-danger)' }} onClick={() => setShowFlagBlacklistModal(item.visitorId)}>
+                                          Flag
+                                        </Button>
                                       </>
                                     )}
                                   </div>
-                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                                    <span>📋 Purpose: <strong style={{ color: darkMode ? 'var(--color-purple-accent)' : '#1e1b4b' }}>{item.purpose}</strong></span>
-                                  </div>
-
-                                  {/* Remark Preview */}
-                                  {item.remarks && (
-                                    <div style={{
-                                      marginTop: '10px',
-                                      background: darkMode ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.05)',
-                                      border: darkMode ? '1px solid rgba(99,102,241,0.2)' : '1px solid rgba(99,102,241,0.3)',
-                                      borderRadius: '8px',
-                                      padding: '8px 12px',
-                                      display: 'flex',
-                                      gap: '8px',
-                                      alignItems: 'flex-start',
-                                      fontSize: '0.8rem'
-                                    }}>
-                                      <MessageSquare size={14} style={{ color: darkMode ? 'var(--color-indigo-accent)' : '#4338ca', flexShrink: 0, marginTop: '2px' }} />
-                                      <div>
-                                        <div style={{ color: darkMode ? 'var(--color-indigo-accent)' : '#4338ca', fontWeight: 600, fontSize: '0.7rem', marginBottom: '2px' }}>YOUR REMARK FOR SECURITY</div>
-                                        <div style={{ color: darkMode ? 'var(--color-purple-accent)' : '#1e1b4b', fontWeight: 500 }}>{item.remarks}</div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* RIGHT: Date + Actions */}
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px', flexShrink: 0 }}>
-                                {/* Date/time block */}
-                                <div style={{ textAlign: 'right' }}>
-                                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: isThisWeek ? (darkMode ? '#fbbf24' : '#b45309') : 'var(--color-text-primary)' }}>
-                                    {schedDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                                  </div>
-                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                                    {schedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </div>
-                                  <div style={{ fontSize: '0.7rem', marginTop: '2px', color: daysFromNow === 1 ? (darkMode ? '#f87171' : '#dc2626') : isThisWeek ? (darkMode ? '#fbbf24' : '#b45309') : (darkMode ? '#818cf8' : '#4f46e5'), fontWeight: 600 }}>
-                                    {daysFromNow === 1 ? '• Tomorrow' : `• In ${daysFromNow} days`}
-                                  </div>
-                                </div>
-
-                                {/* Status badge */}
-                                <StatusIndicator status={item.status} />
-
-                                {/* Remark button */}
-                                <button
-                                  onClick={() => {
-                                    setShowRemarkModal(item);
-                                    setRemarkText(item.remarks || '');
-                                  }}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    background: item.remarks 
-                                      ? (darkMode ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.1)') 
-                                      : (darkMode ? 'rgba(255,255,255,0.05)' : 'var(--menu-item-bg)'),
-                                    border: item.remarks 
-                                      ? (darkMode ? '1px solid rgba(99,102,241,0.35)' : '1px solid rgba(99,102,241,0.3)') 
-                                      : (darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--card-border)'),
-                                    borderRadius: '8px',
-                                    padding: '7px 14px',
-                                    color: item.remarks 
-                                      ? (darkMode ? '#a5b4fc' : '#4f46e5') 
-                                      : (darkMode ? '#a1a1aa' : 'var(--color-text-primary)'),
-                                    cursor: 'pointer',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    transition: 'all 0.2s',
-                                  }}
-                                >
-                                  <Edit2 size={13} />
-                                  {item.remarks ? 'Edit Remark' : 'Add Remark'}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* VIEW: Employee - Invite Future Visitors */}
-          {currentView === 'employee_invite' && (
-            <div style={{ maxWidth: '850px', margin: '0 auto' }}>
-              <div className="table-card" style={{ padding: '36px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)' }}>
-                <div style={{ marginBottom: '28px', borderBottom: '1px solid var(--card-border)', paddingBottom: '20px' }}>
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                    Invite Expected Guest (Pre-Registration)
-                  </h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '6px' }}>
-                    Register visitor credentials for a future schedule. You will be set automatically as the host.
-                  </p>
-                </div>
-
-                <form onSubmit={handlePreRegister}>
-                  {/* SECTION 1: VISITOR INFO */}
-                  <div style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: 'var(--indigo-primary)', display: 'flex' }}><User size={18} /></span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Visitor credentials</span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor Full Name *</label>
-                      <input type="text" className="form-input" required value={preName} onChange={e => setPreName(e.target.value)} placeholder="Jane Doe" style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Company / Organization</label>
-                      <input type="text" className="form-input" value={preCompany} onChange={e => setPreCompany(e.target.value)} placeholder="Acme Corp" style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Email Address</label>
-                      <input 
-                        type="email" 
-                        className="form-input" 
-                        value={preEmail} 
-                        onChange={e => setPreEmail(e.target.value)} 
-                        placeholder="jane@doe.com" 
-                        style={{ width: '100%', height: '42px', fontSize: '0.9rem' }}
-                      />
-                      {preEmail.trim().length > 0 && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(preEmail.trim()) ? (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '4px', fontWeight: 500 }}>
-                          ⚠️ Please enter a valid email address (e.g. name@domain.com)
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Example: name@domain.com</div>
-                      )}
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Phone Number</label>
-                        {prePhone.trim() && (() => {
-                          const clean = prePhone.trim();
-                          let activePrefix = prePhoneCountryCode;
-                          let checkDigits = clean.replace(/\D/g, '');
-                          if (clean.startsWith('+')) {
-                            const matchedPrefix = ['+971', '+353', '+880', '+977', '+234', '+254', '+233', '+852', '+886', '+358', '+966'].find(p => clean.startsWith(p));
-                            activePrefix = matchedPrefix || clean.substring(0, 3);
-                            checkDigits = clean.replace(activePrefix, '').replace(/\D/g, '');
-                          }
-                          const limit = getPhoneLimit(activePrefix);
-                          const isWrongLength = checkDigits.length !== limit;
-                          return (
-                            <span style={{ fontSize: '0.75rem', color: isWrongLength ? '#ef4444' : '#10b981', fontWeight: 600 }}>
-                              {checkDigits.length} / {limit} digits {isWrongLength && '(Incorrect length)'}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <select 
-                          className="form-input" 
-                          value={prePhoneCountryCode} 
-                          onChange={e => setPrePhoneCountryCode(e.target.value)} 
-                          style={{ width: '110px', background: 'var(--menu-item-bg)', padding: '10px 8px', height: '42px', fontSize: '0.9rem' }}
-                        >
-                          <option value="+1">+1 (US)</option>
-                          <option value="+91">+91 (IN)</option>
-                          <option value="+44">+44 (UK)</option>
-                          <option value="+61">+61 (AU)</option>
-                          <option value="+65">+65 (SG)</option>
-                          <option value="+971">+971 (AE)</option>
-                          <option value="+49">+49 (DE)</option>
-                          <option value="+33">+33 (FR)</option>
-                          <option value="+81">+81 (JP)</option>
-                          <option value="+82">+82 (KR)</option>
-                          <option value="+27">+27 (ZA)</option>
-                          <option value="+55">+55 (BR)</option>
-                        </select>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          value={prePhone} 
-                          onChange={e => setPrePhone(e.target.value)} 
-                          placeholder="(555) 0199" 
-                          style={{ flex: 1, height: '42px', fontSize: '0.9rem' }}
-                        />
-                      </div>
-                      {(() => {
-                        const clean = prePhone.trim();
-                        if (!clean) return <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Select country code &amp; enter local number</div>;
-                        
-                        let activePrefix = prePhoneCountryCode;
-                        let checkDigits = clean.replace(/\D/g, '');
-                        let finalPhoneVal = '';
-                        if (clean.startsWith('+')) {
-                          const matchedPrefix = ['+971', '+353', '+880', '+977', '+234', '+254', '+233', '+852', '+886', '+358', '+966'].find(p => clean.startsWith(p));
-                          activePrefix = matchedPrefix || clean.substring(0, 3);
-                          checkDigits = clean.replace(activePrefix, '').replace(/\D/g, '');
-                          finalPhoneVal = clean;
-                        } else {
-                          finalPhoneVal = `${prePhoneCountryCode}${clean}`;
-                        }
-
-                        const limit = getPhoneLimit(activePrefix);
-                        const isOver = checkDigits.length > limit;
-                        const isUnder = checkDigits.length > 0 && checkDigits.length < limit;
-                        const phoneRegex = /^\+[1-9][0-9\s\-()]{6,19}$/;
-                        const isFormatInvalid = !phoneRegex.test(finalPhoneVal);
-
-                        if (isOver || isUnder || isFormatInvalid) {
-                          return (
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '4px', fontWeight: 500 }}>
-                              {isOver 
-                                ? `⚠️ Max digits exceeded for ${activePrefix} (Limit is ${limit} digits)` 
-                                : isUnder
-                                ? `⚠️ Too few digits for ${activePrefix} (Must be exactly ${limit} digits)`
-                                : `⚠️ Invalid phone format (Must start with country code prefix)`}
-                            </div>
-                          );
-                        }
-                        return <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Select country code &amp; enter local number</div>;
-                      })()}
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor's Office Location (Address / City)</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={preLocation} 
-                      onChange={e => setPreLocation(e.target.value)} 
-                      placeholder="e.g. 123 Main St, New York or Bangalore HQ" 
-                      style={{ width: '100%', height: '42px', fontSize: '0.9rem' }}
-                    />
-                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Simple location/address to trace back origin if needed</div>
-                  </div>
-
-                  {/* SECTION 2: VISIT DETAILS */}
-                  <div style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '8px', marginBottom: '20px', marginTop: '32px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: 'var(--indigo-primary)', display: 'flex' }}><History size={18} /></span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Visit details</span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor Classification</label>
-                      <select className="form-input" value={preType} onChange={(e: any) => setPreType(e.target.value)} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
-                        <option value="Guest">Guest</option>
-                        <option value="Vendor">Vendor</option>
-                        <option value="Contractor">Contractor</option>
-                        <option value="Candidate">Candidate</option>
-                        <option value="VIP">VIP</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Scheduled Date &amp; Time *</label>
-                      <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} max={getMaxFutureISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
-                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>* Dates more than 6 months from now cannot be selected.</div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '32px' }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Purpose of Visit *</label>
-                    <input type="text" className="form-input" required value={prePurpose} onChange={e => setPrePurpose(e.target.value)} placeholder="Quarterly sync" style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid var(--card-border)', paddingTop: '24px' }}>
-                    <Button type="submit" variant="primary" style={{ padding: '12px 36px', fontSize: '0.9rem' }}>
-                      Send Invitation &amp; Register
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* VIEW: Blacklist Review Queue */}
-          {currentView === 'blacklist_review' && (
-            <div>
-              {/* Header summary */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                  <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <ShieldAlert size={22} style={{ color: 'var(--color-danger)' }} />
-                    Security Flag Review Queue
-                  </h2>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-                    {flaggedVisitors.length > 0
-                      ? `${flaggedVisitors.length} visitor${flaggedVisitors.length > 1 ? 's' : ''} flagged by security — review and decide action`
-                      : 'No pending flags — all clear'}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  {user.role === 'Admin' && (
-                    <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setShowAddBlModal(true)}>
-                      <Plus size={16} />
-                      <span>Manually Blacklist Person</span>
-                    </button>
-                  )}
-                  {flaggedVisitors.length > 0 && (
-                    <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '8px 18px', color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.88rem' }}>
-                      ⚠️ {flaggedVisitors.length} Pending Review{flaggedVisitors.length > 1 ? 's' : ''}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {flaggedVisitors.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '80px 24px', background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: '16px' }}>
-                  <ShieldAlert size={48} style={{ margin: '0 auto 20px', color: 'var(--color-success)', opacity: 0.6 }} />
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-success)' }}>All Clear — No Pending Reviews</div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '8px' }}>Security guards have not flagged any new visitors for blacklist review.</div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {flaggedVisitors.map((v: any) => (
-                    <div key={v.id} style={{
-                      background: 'var(--card-bg)',
-                      border: '1px solid rgba(239,68,68,0.2)',
-                      borderRadius: '16px',
-                      overflow: 'hidden',
-                      boxShadow: '0 4px 24px rgba(239,68,68,0.08)'
-                    }}>
-                      {/* Card Header */}
-                      <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'rgba(239,68,68,0.15)', border: '2px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-danger)', flexShrink: 0 }}>
-                          {v.fullName?.charAt(0).toUpperCase()}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--color-danger)' }}>{v.fullName}</div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                            {v.email && <span>{v.email}</span>}
-                            {v.email && v.phone && <span style={{ margin: '0 8px', color: 'var(--color-text-secondary)' }}>|</span>}
-                            {v.phone && <span>{v.phone}</span>}
-                            {v.company && <span style={{ marginLeft: '8px', color: 'var(--color-text-secondary)' }}>· {v.company}</span>}
-                          </div>
-                        </div>
-                        <Badge tone="danger" dot={true}>Pending Review</Badge>
-                      </div>
-
-                      {/* Card Body */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0', borderBottom: '1px solid var(--card-border)' }}>
-                        {/* Flagged By */}
-                        <div style={{ padding: '16px 24px', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '6px' }}>🛡 Flagged by</div>
-                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{v.flaggedByName}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '3px' }}>
-                            {v.flaggedAt ? new Date(v.flaggedAt).toLocaleString() : 'Date unknown'}
-                          </div>
-                        </div>
-
-                        {/* Visit History */}
-                        <div style={{ padding: '16px 24px', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '6px' }}>📋 Visit history</div>
-                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{v.visitHistory.length} recorded visit{v.visitHistory.length !== 1 ? 's' : ''}</div>
-                          {v.visitHistory.length > 0 && (
-                            <div style={{ fontSize: '0.73rem', color: 'var(--color-text-secondary)', marginTop: '3px' }}>
-                              Last: {new Date(v.visitHistory[0].scheduledAt || v.visitHistory[0].createdAt).toLocaleDateString()}
-                            </div>
+                                </td>
+                              </tr>
+                            ))
                           )}
-                        </div>
-
-                        {/* Visitor Type */}
-                        <div style={{ padding: '16px 24px' }}>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '6px' }}>🏷 Visitor type</div>
-                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{v.visitorType || 'Guest'}</div>
-                        </div>
-                      </div>
-
-                      {/* Flag Reason */}
-                      <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--card-border)' }}>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '8px' }}>⚠️ Security flag reason</div>
-                        <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '8px', padding: '12px 16px', color: 'var(--color-danger)', fontSize: '0.88rem', lineHeight: '1.5', fontStyle: 'italic' }}>
-                          "{v.flagReason}"
-                        </div>
-                      </div>
-
-                      {/* Admin Decision Actions */}
-                      {user.role === 'Admin' && (
-                        <div style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '12px', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginRight: 'auto' }}>
-                            📌 Your decision will be logged and applied immediately
-                          </span>
-                          <button
-                            className="btn btn-secondary"
-                            style={{ padding: '9px 20px', fontSize: '0.85rem', borderColor: 'rgba(74,222,128,0.4)', color: 'var(--color-success)' }}
-                            onClick={() => handleDismissBlacklist(v.id)}
-                          >
-                            ✓ Clear Flag — Allow Entry
-                          </button>
-                          <button
-                            className="btn btn-danger"
-                            style={{ padding: '9px 20px', fontSize: '0.85rem' }}
-                            onClick={() => handleConfirmBlacklist(v.id, v.fullName, v.flagReason)}
-                          >
-                            🚫 Confirm Blacklist
-                          </button>
-                        </div>
-                      )}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
+                  </div>
                 </div>
               )}
 
-              {/* Confirmed Blacklist Section */}
-              <div style={{ marginTop: '48px', marginBottom: '24px' }}>
-                <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <ShieldAlert size={22} style={{ color: 'var(--color-danger)' }} />
-                  Confirmed Blacklisted Visitors
-                </h2>
-                <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-                  {confirmedBlacklisted.length > 0
-                    ? `${confirmedBlacklisted.length} visitor${confirmedBlacklisted.length > 1 ? 's' : ''} currently banned from entering the premises`
-                    : 'No confirmed blacklisted visitors'}
-                </p>
-              </div>
+              {/* VIEW: Check Invitation */}
+              {currentView === 'check_invite' && (
+                <div>
+                  <div style={{ background: 'var(--card-bg-subtle)', border: '1px solid var(--card-border)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px' }}>Verify Visitor Invitation</h3>
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginBottom: '20px' }}>
+                      Verify future invitations made by host/employees.
+                    </p>
 
-              {confirmedBlacklisted.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 24px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--card-border)', borderRadius: '16px' }}>
-                  <div style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>No visitors currently confirmed on the blacklist.</div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {confirmedBlacklisted.map((v: any) => (
-                    <div key={v.id} style={{
-                      background: 'var(--card-bg)',
-                      border: '1px solid var(--card-border)',
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      boxShadow: '0 2px 12px rgba(0,0,0,0.15)'
-                    }}>
-                      <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, color: 'var(--color-danger)', flexShrink: 0 }}>
-                          {v.fullName?.charAt(0).toUpperCase()}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--color-text-primary)' }}>{v.fullName}</div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
-                            {v.email && <span>{v.email}</span>}
-                            {v.email && v.phone && <span style={{ margin: '0 8px', color: 'var(--color-text-secondary)' }}>|</span>}
-                            {v.phone && <span>{v.phone}</span>}
-                            {v.company && <span style={{ marginLeft: '8px', color: 'var(--color-text-secondary)' }}>· {v.company}</span>}
-                          </div>
-                        </div>
-                        {user.role === 'Admin' && (
-                          <button
-                            type="button"
-                            className="btn btn-secondary"
-                            style={{ padding: '6px 14px', fontSize: '0.8rem', borderColor: 'var(--color-text-secondary)', color: 'var(--color-text-primary)' }}
-                            onClick={() => handleRemoveFromBlacklist(v.id)}
-                          >
-                            Remove from Blacklist
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* VIEW: Today's Queue */}
-          {currentView === 'queue' && (
-            <div>
-              {/* Stat summary bar */}
-              <div className="stats-row">
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span>Expected Invites</span>
-                    <Clock size={16} color="#60a5fa" />
-                  </div>
-                  <div className="stat-value">{queueStats.expected}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span>Checked In / In Office</span>
-                    <UserCheck size={16} color="#4ade80" />
-                  </div>
-                  <div className="stat-value">{queueStats.checkedin}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span>Waiting in Lobby</span>
-                    <Clock size={16} color="#fbbf24" />
-                  </div>
-                  <div className="stat-value" style={{ color: 'var(--color-warning)' }}>{queueStats.waiting}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span>Departed Today</span>
-                    <Clock size={16} color="#a1a1aa" />
-                  </div>
-                  <div className="stat-value">{queueStats.checkedout}</div>
-                </div>
-              </div>
-
-              {/* Data Table */}
-              <div className="table-card">
-                <div className="table-header">
-                  <div style={{ display: 'flex', gap: '12px', width: '60%' }}>
                     <div style={{ position: 'relative', width: '100%' }}>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        placeholder="Filter queue by visitor, host, purpose..." 
-                        value={queueSearch}
-                        onChange={e => setQueueSearch(e.target.value)}
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Search future invitations by visitor or host name..."
+                        value={inviteSearch}
+                        onChange={e => setInviteSearch(e.target.value)}
                         style={{ paddingLeft: '36px' }}
                       />
                       <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
                     </div>
                   </div>
-                  {user.role === 'Receptionist' && (
-                    <button className="btn btn-primary" onClick={() => setShowPreRegModal(true)}>
-                      <Plus size={16} />
-                      <span>Pre-Register Guest</span>
-                    </button>
-                  )}
-                </div>
 
-                <div className="table-wrapper">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Visitor Details</th>
-                        <th>Classification</th>
-                        <th>Host Employee</th>
-                        <th>Purpose of Visit</th>
-                        <th>Check In Time</th>
-                        <th>Status</th>
-                        <th style={{ textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredQueue.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} style={{ padding: '40px 0', color: 'var(--color-text-secondary)', textAlign: 'center' }}>
-                            No visitors registered in lobby queue today.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredQueue.map((item) => (
-                          <tr key={item.id}>
-                            <td style={{ padding: '16px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
-                                <div>
-                                  <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{item.visitorName}</div>
-                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>🏢 {item.visitorCompany || 'Independent'}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600, fontSize: '0.85rem' }}>
-                                {item.visitorType}
-                              </span>
-                            </td>
-                            <td>
-                              <div style={{ fontWeight: 500 }}>{item.hostName}</div>
-                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{item.hostPhone}</div>
-                            </td>
-                            <td style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {item.purpose}
-                            </td>
-                            <td>
-                              {item.checkedInAt ? new Date(item.checkedInAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Pending'}
-                            </td>
-                            <td>
-                              <StatusIndicator status={item.status} />
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                              {item.isBlacklisted ? (
-                                <span className="badge badge-danger" style={{ background: '#ef4444', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>⚠️ BLACKLISTED</span>
-                              ) : (
-                                <>
-                                  {item.status === 'Waiting' && user.role === 'Receptionist' && (
-                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                      <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => triggerCheckIn(item.id)}>
-                                        Approve Entry
-                                      </button>
-                                      <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
-                                        Deny
-                                      </button>
-                                    </div>
-                                  )}
-                                  {(item.status === 'CheckedIn' || item.status === 'InMeeting') && user.role === 'Receptionist' && (
-                                    <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleCheckOut(item.id)}>
-                                      Check Out
-                                    </button>
-                                  )}
-                                  {item.status === 'Denied' && (
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>Denied: {item.deniedReason}</span>
-                                  )}
-                                  {item.status === 'Expected' && (
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--color-indigo-accent)' }}>Pre-Registered</span>
-                                  )}
-                                  {item.status === 'CheckedOut' && (
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Departed</span>
-                                  )}
-                                </>
-                              )}
-                            </td>
+                  <div className="table-card">
+                    <div className="table-header">
+                      <div style={{ fontWeight: 600 }}>Future Scheduled Invitations</div>
+                    </div>
+                    <div className="table-wrapper">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Visitor Name</th>
+                            <th>Company / Classification</th>
+                            <th>Host Employee</th>
+                            <th>Scheduled Time</th>
+                            <th>Status</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* VIEW: Employees Directory */}
-          {currentView === 'employees' && (
-            <div>
-              <div className="table-card">
-                <div className="table-header">
-                  <div style={{ position: 'relative', width: '50%' }}>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="Search host directory by name or department..." 
-                      value={empSearch}
-                      onChange={e => setEmpSearch(e.target.value)}
-                      style={{ paddingLeft: '36px' }}
-                    />
-                    <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
-                  </div>
-                  {user.role === 'Admin' && (
-                    <button className="btn btn-primary" onClick={() => setShowAddEmpModal(true)}>
-                      <Plus size={16} />
-                      <span>Add Employee</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="table-wrapper">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Host Name</th>
-                        <th>Department</th>
-                        <th>Email Address</th>
-                        <th>Phone Number</th>
-                        <th>Location Desk</th>
-                        <th>Status</th>
-                        {user.role === 'Admin' && <th style={{ textAlign: 'right' }}>Actions</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredEmployees.length === 0 ? (
-                        <tr>
-                          <td colSpan={user.role === 'Admin' ? 7 : 6} style={{ textAlign: 'center', padding: '30px 0', color: 'var(--color-text-secondary)' }}>
-                            No employees found matching directory search.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredEmployees.map((e) => (
-                          <tr key={e.id}>
-                            <td style={{ fontWeight: 600 }}>{e.fullName}</td>
-                            <td>
-                              <span style={{ fontSize: '0.8rem', background: 'rgba(99,102,241,0.1)', color: 'var(--color-indigo-accent)', padding: '4px 8px', borderRadius: '4px' }}>
-                                {e.departmentName}
-                              </span>
-                            </td>
-                            <td>{e.email}</td>
-                            <td>{e.phone}</td>
-                            <td>Floor {e.floor || 'N/A'}</td>
-                            <td>
-                              <span style={{ color: e.isActive ? '#4ade80' : '#ef4444', fontSize: '0.85rem', fontWeight: 600 }}>
-                                {e.isActive ? 'Active' : 'Inactive'}
-                              </span>
-                            </td>
-                            {user.role === 'Admin' && (
-                              <td style={{ textAlign: 'right' }}>
-                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                  <button
-                                    className="btn btn-secondary"
-                                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                    onClick={() => startEditEmployee(e)}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    className="btn btn-danger"
-                                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                                    onClick={() => handleRemoveEmployee(e.id, e.fullName)}
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
+                        </thead>
+                        <tbody>
+                          {futureInvitations.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} style={{ padding: '32px' }}>
+                                <EmptyState icon={Users} title="No Future Invitations" description="No future invitations scheduled." />
                               </td>
-                            )}
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-
-          {/* VIEW: Analytics Summary Charts */}
-          {currentView === 'analytics' && analytics && (
-            <div>
-              {/* Stat Summary Cards */}
-              <div className="stats-row">
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span>Lobby Dwell Avg Time</span>
-                    <Clock size={16} />
-                  </div>
-                  <div className="stat-value">{analytics.avgVisitMinutes} <span style={{ fontSize: '1rem', color: 'var(--color-text-secondary)' }}>mins</span></div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Checked-out guests average</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span>Today's Registrations</span>
-                    <Users size={16} />
-                  </div>
-                  <div className="stat-value">{analytics.todaysVisitors} <span style={{ fontSize: '1rem', color: 'var(--color-text-secondary)' }}>guests</span></div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Today's lobby volume</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span>Total Registrations (30d)</span>
-                    <Users size={16} style={{ color: 'var(--color-indigo-accent)' }} />
-                  </div>
-                  <div className="stat-value" style={{ color: 'var(--color-indigo-accent)' }}>{analytics.total30d} <span style={{ fontSize: '1rem', color: 'var(--color-text-secondary)' }}>total</span></div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Rolling 30-day volume</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span>Repeat Guest Rate</span>
-                    <UserCheck size={16} />
-                  </div>
-                  <div className="stat-value">{analytics.repeatRate}%</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>{analytics.repeatVisitors} repeat guests (30d)</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-header">
-                    <span>Blocked Incidents (30d)</span>
-                    <ShieldAlert size={16} color="#ef4444" />
-                  </div>
-                  <div className="stat-value" style={{ color: 'var(--color-danger)' }}>{analytics.deniedEntries}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '4px' }}>Today: {analytics.deniedEntriesToday} blocked</div>
-                </div>
-              </div>
-
-              {/* Recharts Graphical Visualizer - Row 1 */}
-              <div className="charts-grid">
-                <div className="chart-card">
-                  <h3 style={{ marginBottom: '20px', fontWeight: 600 }}>Visitor Volume History (7 Days)</h3>
-                  <div style={{ width: '100%', height: '280px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={analytics.weeklyTrend}>
-                        <defs>
-                          <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
-                        <XAxis dataKey="date" stroke="#a1a1aa" fontSize={11} />
-                        <YAxis stroke="#a1a1aa" fontSize={11} allowDecimals={false} />
-                        <Tooltip contentStyle={{ background: 'var(--card-bg-solid)', borderColor: 'var(--card-border)', color: 'var(--color-text-primary)', borderRadius: '8px' }} labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }} itemStyle={{ color: 'var(--color-text-primary)' }} />
-                        <Area type="monotone" dataKey="count" name="Visits" stroke="#6366f1" fillOpacity={1} fill="url(#colorCount)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="chart-card">
-                  <h3 style={{ marginBottom: '20px', fontWeight: 600 }}>Visits by Department (30d)</h3>
-                  <div style={{ width: '100%', height: '280px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <ResponsiveContainer width="100%" height="70%">
-                      <PieChart>
-                        <Pie
-                          data={analytics.visitorsByDept}
-                          dataKey="count"
-                          nameKey="department"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={50}
-                          outerRadius={70}
-                          fill="#8884d8"
-                          labelLine={false}
-                        >
-                          {analytics.visitorsByDept.map((_: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ background: 'var(--card-bg-solid)', borderColor: 'var(--card-border)', color: 'var(--color-text-primary)', borderRadius: '8px' }} labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }} itemStyle={{ color: 'var(--color-text-primary)' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    {/* Manual Legend listing with percentages */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginTop: '10px', fontSize: '0.8rem' }}>
-                      {analytics.visitorsByDept.map((entry: any, index: number) => {
-                        const total = analytics.visitorsByDept.reduce((acc: number, curr: any) => acc + curr.count, 0);
-                        const pct = total > 0 ? Math.round((entry.count / total) * 100) : 0;
-                        return (
-                          <div key={entry.department} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <div style={{ width: '10px', height: '10px', background: COLORS[index % COLORS.length], borderRadius: '50%' }}></div>
-                            <span>{entry.department}: {entry.count} ({pct}%)</span>
-                          </div>
-                        );
-                      })}
+                            </tr>
+                          ) : (
+                            (() => {
+                              const filtered = futureInvitations.filter((item: any) =>
+                                item.visitorName.toLowerCase().includes(inviteSearch.toLowerCase()) ||
+                                item.hostName.toLowerCase().includes(inviteSearch.toLowerCase())
+                              );
+                              if (filtered.length === 0) {
+                                return (
+                                  <tr>
+                                    <td colSpan={6} style={{ padding: '32px' }}>
+                                      <EmptyState icon={Search} title="No Matches Found" description="No matching invitations found." />
+                                    </td>
+                                  </tr>
+                                );
+                              }
+                              return filtered.map((item: any) => {
+                                const isBl = item.isBlacklisted;
+                                const isFlagged = item.blacklistFlag === 'pending_review';
+                                return (
+                                  <tr key={item.id} style={{ background: isBl ? 'rgba(239, 68, 68, 0.05)' : '' }}>
+                                    <td>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
+                                        <div>
+                                          <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span>{item.visitorName}</span>
+                                            {isBl && <Badge tone="danger">⚠️ BLACKLISTED</Badge>}
+                                            {isFlagged && <Badge tone="warning">⚠️ PENDING REVIEW</Badge>}
+                                          </div>
+                                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span>{item.visitorEmail || 'No email provided'}</span>
+                                            <span style={{ opacity: 0.4 }}>•</span>
+                                            <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <span style={{ fontSize: '0.85rem', color: 'var(--color-text-primary)' }}>
+                                        {item.visitorCompany || 'Independent'}
+                                      </span>
+                                    </td>
+                                    <td>{item.hostName || 'N/A'}</td>
+                                    <td>
+                                      <div>{new Date(item.scheduledAt).toLocaleString()}</div>
+                                      {new Date(item.scheduledAt).toDateString() === new Date().toDateString() ? (
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', fontWeight: 600 }}>• Today's Booking</span>
+                                      ) : (
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 600 }}>• Future Booking</span>
+                                      )}
+                                    </td>
+                                    <td>
+                                      <StatusIndicator status={item.status} />
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>
+                                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                        {isBl && (
+                                          <Button
+                                            variant="primary"
+                                            disabled={!!pendingActionId}
+                                            style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 600, background: '#f59e0b', color: '#fff', border: 'none' }}
+                                            onClick={() => handleSecurityNotifyHostBlacklisted(item)}
+                                          >
+                                            {pendingActionId === `notify_host_${item.id}` ? (
+                                              <Loader2 size={14} className="animate-spin" />
+                                            ) : (
+                                              '🔔 Notify Host'
+                                            )}
+                                          </Button>
+                                        )}
+                                        {!isBl && ['Expected', 'Waiting'].includes(item.status) && (
+                                          (() => {
+                                            const isToday = new Date(item.scheduledAt).toDateString() === new Date().toDateString();
+                                            if (isToday) {
+                                              return (
+                                                <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowArrivalPhotoModal(item.id)}>
+                                                  Mark Arrived
+                                                </Button>
+                                              );
+                                            } else {
+                                              return (
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', background: 'var(--card-bg-subtle)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--card-border)' }}>
+                                                  Actions Locked (Future Visit)
+                                                </span>
+                                              );
+                                            }
+                                          })()
+                                        )}
+                                        <Button
+                                          variant="secondary"
+                                          style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}
+                                          onClick={() => {
+                                            setDetailPanelTab('general');
+                                            setSelectedInviteDetails({ ...item, hostDept: item.hostDept || '' });
+                                          }}
+                                        >
+                                          <FileText size={13} /> Details
+                                        </Button>
+                                        <Button variant="secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', borderColor: '#ef4444', color: 'var(--color-danger)' }} onClick={() => setShowFlagBlacklistModal(item.visitorId)}>
+                                          Flag Blacklist
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              });
+                            })()
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Recharts Graphical Visualizer - Row 2 */}
-              <div className="charts-grid">
-                <div className="chart-card">
-                  <h3 style={{ marginBottom: '20px', fontWeight: 600 }}>Lobby Load by Hour (30d Peak Times)</h3>
-                  <div style={{ width: '100%', height: '280px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={analytics.hourlyData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
-                        <XAxis dataKey="hour" stroke="#a1a1aa" fontSize={10} />
-                        <YAxis stroke="#a1a1aa" fontSize={11} allowDecimals={false} />
-                        <Tooltip contentStyle={{ background: 'var(--card-bg-solid)', borderColor: 'var(--card-border)', color: 'var(--color-text-primary)', borderRadius: '8px' }} labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }} itemStyle={{ color: 'var(--color-text-primary)' }} />
-                        <Bar dataKey="count" name="Registrations" radius={[4, 4, 0, 0]}>
-                          {analytics.hourlyData.map((_: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+              {/* VIEW: Past Records (Security History) */}
+              {currentView === 'security_history' && (
+                <div>
+                  <div style={{ background: 'var(--card-bg-subtle)', border: '1px solid var(--card-border)', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px' }}>Visitor History Log</h3>
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginBottom: '20px' }}>
+                      Search and review past visitor entries, completions, and check-out logs.
+                    </p>
+
+                    <div style={{ position: 'relative', width: '100%' }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Search past logs by visitor or host name..."
+                        value={pastSearch}
+                        onChange={e => setPastSearch(e.target.value)}
+                        style={{ paddingLeft: '36px' }}
+                      />
+                      <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+                    </div>
+                  </div>
+
+                  <div className="table-card">
+                    <div className="table-header">
+                      <div style={{ fontWeight: 600 }}>Completed &amp; Past Visits</div>
+                    </div>
+                    <div className="table-wrapper">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Visitor Details</th>
+                            <th>Host Employee</th>
+                            <th>Visit Purpose / Badge</th>
+                            <th>Visit Schedule &amp; Timings</th>
+                            <th>Final Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pastRecords.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} style={{ padding: '32px' }}>
+                                <EmptyState icon={History} title="No Past Records" description="No past visitor logs or historical records found." />
+                              </td>
+                            </tr>
+                          ) : (
+                            (() => {
+                              const filtered = pastRecords.filter((item: any) =>
+                                item.visitorName.toLowerCase().includes(pastSearch.toLowerCase()) ||
+                                item.hostName.toLowerCase().includes(pastSearch.toLowerCase()) ||
+                                item.visitorCompany.toLowerCase().includes(pastSearch.toLowerCase())
+                              );
+                              if (filtered.length === 0) {
+                                return (
+                                  <tr>
+                                    <td colSpan={5} style={{ padding: '32px' }}>
+                                      <EmptyState icon={Search} title="No Matches Found" description="No matching past records found." />
+                                    </td>
+                                  </tr>
+                                );
+                              }
+                              return filtered.map((item: any) => (
+                                <tr key={item.id} style={{
+                                  borderBottom: '1px solid var(--card-border)',
+                                  transition: 'background 0.2s',
+                                }}
+                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                                      <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
+
+                                      {/* Details */}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                          <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{item.visitorName}</span>
+                                          {item.isBlacklisted && <Badge tone="danger">⚠️ BLACKLISTED</Badge>}
+
+                                          {item.additionalGuests > 0 && (
+                                            <Badge tone="warning">
+                                              +{item.additionalGuests} Guests
+                                            </Badge>
+                                          )}
+                                        </div>
+
+                                        {/* Company Info & Visitor Type under name */}
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                                          <span>🏢 {item.visitorCompany || 'Independent'}</span>
+                                          <span style={{ opacity: 0.4 }}>•</span>
+                                          <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
+                                        </div>
+
+                                        {/* Location Info */}
+                                        {item.visitorLocation && (
+                                          <div style={{ fontSize: '0.8rem', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <span>📍 Origin:</span>
+                                            <span style={{ color: 'var(--color-warning)', fontWeight: 500 }}>{item.visitorLocation}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Contact Details */}
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                                          {item.visitorEmail && (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                              <span style={{ color: 'var(--color-text-secondary)' }}>✉️</span> {item.visitorEmail}
+                                            </span>
+                                          )}
+                                          {item.visitorPhone && (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                              <span style={{ color: 'var(--color-text-secondary)' }}>📞</span> {item.visitorPhone}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                      <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{item.hostName}</span>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                          🏢 {item.department || 'General'}
+                                        </span>
+                                        {item.hostFloor && (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                            📍 Floor {item.hostFloor}
+                                          </span>
+                                        )}
+                                        {item.hostPhone && (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                                            📞 {item.hostPhone}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                      <div style={{
+                                        fontSize: '0.8rem',
+                                        color: 'var(--color-text-primary)',
+                                        fontStyle: 'italic',
+                                        lineHeight: '1.4',
+                                        background: 'var(--card-bg-subtle)',
+                                        padding: '8px 12px',
+                                        borderRadius: '8px',
+                                        borderLeft: '3px solid var(--indigo-primary)'
+                                      }}>
+                                        "{item.purpose}"
+                                      </div>
+                                      {item.badgeNumber && item.badgeNumber !== 'N/A' && (
+                                        <div style={{ alignSelf: 'flex-start' }}>
+                                          <CredentialBadge label="Badge" value={item.badgeNumber} />
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.75rem' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-primary)' }}>
+                                        <span style={{ color: 'var(--color-text-secondary)' }}>📅</span>
+                                        <span style={{ fontWeight: 500 }}>
+                                          {new Date(item.scheduledAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </span>
+                                      </div>
+
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px dashed var(--card-border)', paddingLeft: '8px', marginLeft: '4px', marginTop: '4px' }}>
+                                        <div style={{ color: 'var(--color-text-secondary)' }}>
+                                          Scheduled: <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{new Date(item.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+
+                                        {item.checkedInAt && (
+                                          <div style={{ color: 'var(--color-success)' }}>
+                                            🟢 Checked In: <span style={{ fontWeight: 500 }}>{new Date(item.checkedInAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                          </div>
+                                        )}
+
+                                        {item.checkedOutAt && (
+                                          <div style={{ color: 'var(--color-danger)' }}>
+                                            🔴 Checked Out: <span style={{ fontWeight: 500 }}>{new Date(item.checkedOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                          </div>
+                                        )}
+
+                                        {item.deniedReason && (
+                                          <div style={{
+                                            color: 'var(--color-danger)',
+                                            background: 'rgba(239, 68, 68, 0.1)',
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            marginTop: '4px',
+                                            border: '1px solid rgba(239, 68, 68, 0.15)',
+                                            fontSize: '0.7rem'
+                                          }}>
+                                            ⚠️ Deny Reason: {item.deniedReason}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
+                                    <StatusIndicator status={item.status} />
+                                  </td>
+                                </tr>
+                              ));
+                            })()
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className="chart-card">
-                  <h3 style={{ marginBottom: '20px', fontWeight: 600 }}>Top Purposes of Visit (30d Intent)</h3>
-                  <div style={{ width: '100%', height: '280px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart layout="vertical" data={analytics.visitorsByPurpose}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
-                        <XAxis type="number" stroke="#a1a1aa" fontSize={11} allowDecimals={false} />
-                        <YAxis dataKey="purpose" type="category" stroke="#a1a1aa" fontSize={10} width={120} />
-                        <Tooltip contentStyle={{ background: 'var(--card-bg-solid)', borderColor: 'var(--card-border)', color: 'var(--color-text-primary)', borderRadius: '8px' }} labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }} itemStyle={{ color: 'var(--color-text-primary)' }} />
-                        <Bar dataKey="count" name="Visits" radius={[0, 4, 4, 0]}>
-                          {analytics.visitorsByPurpose.map((_: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+
+
+              {/* VIEW: Employee - Today's Scheduled Visitors */}
+              {currentView === 'employee_scheduled' && (() => {
+                const todayStr = new Date().toDateString();
+                const todayScheduledVisits = employeeVisits.filter((item: any) => {
+                  const schedDateStr = new Date(item.scheduledAt).toDateString();
+                  const isActive = ['Expected', 'Waiting', 'CheckedIn'].includes(item.status);
+                  return schedDateStr === todayStr && isActive;
+                });
+
+                return (
+                  <div>
+                    <div className="table-card" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+                      <div className="table-header" style={{ borderBottom: '1px solid var(--card-border)' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-text-primary)' }}>Today's Scheduled Visitors</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Active visitor schedules for the current date</div>
+                        </div>
+                      </div>
+
+                      <div className="table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Visitor</th>
+                              <th>Purpose</th>
+                              <th>Expected Arrival</th>
+                              <th>Status</th>
+                              <th style={{ textAlign: 'right' }}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {todayScheduledVisits.length === 0 ? (
+                              <tr>
+                                <td colSpan={5} style={{ padding: '32px' }}>
+                                  <EmptyState icon={Clock} title="No Scheduled Visitors Today" description="No visitors scheduled for today. Need to host someone? Pre-register them in the Invite Future Guest tab." />
+                                </td>
+                              </tr>
+                            ) : (
+                              todayScheduledVisits.map((item: any) => (
+                                <tr key={item.id} style={{
+                                  borderBottom: '1px solid var(--card-border)',
+                                  transition: 'background 0.2s',
+                                }}
+                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                                      <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
+
+                                      {/* Details */}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                          <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{item.visitorName}</span>
+
+                                          {item.additionalGuests > 0 && (
+                                            <Badge tone="warning">
+                                              +{item.additionalGuests} Guests
+                                            </Badge>
+                                          )}
+                                        </div>
+
+                                        {/* Company Info & Visitor Type under name */}
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                                          <span>🏢 {item.visitorCompany || 'Independent'}</span>
+                                          <span style={{ opacity: 0.4 }}>•</span>
+                                          <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
+                                        </div>
+
+                                        {/* Location Info */}
+                                        {item.visitorLocation && (
+                                          <div style={{ fontSize: '0.8rem', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <span>📍 Origin:</span>
+                                            <span style={{ color: 'var(--color-warning)', fontWeight: 500 }}>{item.visitorLocation}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Contact Details */}
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                                          {item.visitorEmail && (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                              <span style={{ color: 'var(--color-text-secondary)' }}>✉️</span> {item.visitorEmail}
+                                            </span>
+                                          )}
+                                          {item.visitorPhone && (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                              <span style={{ color: 'var(--color-text-secondary)' }}>📞</span> {item.visitorPhone}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
+                                    <div style={{
+                                      fontSize: '0.8rem',
+                                      color: 'var(--color-text-primary)',
+                                      fontStyle: 'italic',
+                                      lineHeight: '1.4',
+                                      background: 'var(--card-bg-subtle)',
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      borderLeft: '3px solid #6366f1'
+                                    }}>
+                                      "{item.purpose}"
+                                    </div>
+                                  </td>
+
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.75rem' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                                        <span style={{ color: 'var(--color-text-secondary)' }}>⏰</span>
+                                        <span>{new Date(item.scheduledAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                      </div>
+                                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{new Date(item.scheduledAt).toLocaleDateString(undefined, { weekday: 'long' })}</div>
+                                    </div>
+                                  </td>
+
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
+                                    <StatusIndicator status={item.status} />
+                                  </td>
+
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
+                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                      {item.status === 'Waiting' && (
+                                        <>
+                                          <Button variant="danger" style={{
+                                            padding: '8px 16px',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 600,
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                                          }} onClick={() => setShowDenyModal(item.id)}>
+                                            Deny
+                                          </Button>
+                                        </>
+                                      )}
+                                      {item.status === 'Expected' && (
+                                        <>
+                                          <select
+                                            className="form-input"
+                                            defaultValue=""
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              if (val) {
+                                                handleDelayVisit(item.id, item.scheduledAt, parseInt(val));
+                                                e.target.value = "";
+                                              }
+                                            }}
+                                            style={{
+                                              padding: '6px 12px',
+                                              fontSize: '0.8rem',
+                                              height: '36px',
+                                              background: 'var(--menu-item-bg)',
+                                              border: '1px solid var(--card-border)',
+                                              borderRadius: '8px',
+                                              color: 'var(--color-text-primary)',
+                                              cursor: 'pointer',
+                                              fontWeight: 500
+                                            }}
+                                          >
+                                            <option value="" disabled>⏳ Delay Visit...</option>
+                                            <option value="15">Delay 15 Min</option>
+                                            <option value="30">Delay 30 Min</option>
+                                            <option value="45">Delay 45 Min</option>
+                                            <option value="60">Delay 1 Hour</option>
+                                          </select>
+                                          <Button variant="danger" style={{
+                                            padding: '6px 14px',
+                                            fontSize: '0.8rem',
+                                            height: '36px',
+                                            fontWeight: 600,
+                                            borderRadius: '8px',
+                                            cursor: 'pointer'
+                                          }} onClick={() => handleEmployeeCancelVisit(item.id)}>
+                                            Cancel Visit
+                                          </Button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* VIEW: Employee - Past Hosted Visitors */}
+              {currentView === 'employee_past' && (() => {
+                const now = new Date();
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+                const pastHostedVisits = employeeVisits.filter((item: any) => {
+                  if (!item.scheduledAt) return false;
+                  const schedDate = new Date(item.scheduledAt);
+                  const isPast = schedDate < todayStart;
+                  const isFinalized = ['CheckedOut', 'Denied', 'Cancelled', 'cancellation_pending_reception'].includes(item.status);
+                  return isPast || isFinalized;
+                });
+
+                return (
+                  <div>
+                    <div className="table-card" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+                      <div className="table-header" style={{ borderBottom: '1px solid var(--card-border)' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-text-primary)' }}>Past Hosted Visits Log</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Historical visitor entries hosted by you</div>
+                        </div>
+                      </div>
+
+                      <div className="table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Visitor</th>
+                              <th>Purpose</th>
+                              <th>Schedule &amp; Timing Details</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pastHostedVisits.length === 0 ? (
+                              <tr>
+                                <td colSpan={4} style={{ padding: '32px' }}>
+                                  <EmptyState icon={History} title="No Historical Visits" description="No historical visit logs found." />
+                                </td>
+                              </tr>
+                            ) : (
+                              pastHostedVisits.map((item: any) => (
+                                <tr key={item.id} style={{
+                                  borderBottom: '1px solid var(--card-border)',
+                                  transition: 'background 0.2s',
+                                }}
+                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                                      <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
+
+                                      {/* Details */}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                          <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>{item.visitorName}</span>
+
+                                          {item.additionalGuests > 0 && (
+                                            <Badge tone="warning">
+                                              +{item.additionalGuests} Guests
+                                            </Badge>
+                                          )}
+                                        </div>
+
+                                        {/* Company Info & Visitor Type under name */}
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                                          <span>🏢 {item.visitorCompany || 'Independent'}</span>
+                                          <span style={{ opacity: 0.4 }}>•</span>
+                                          <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
+                                        </div>
+
+                                        {/* Location Info */}
+                                        {item.visitorLocation && (
+                                          <div style={{ fontSize: '0.8rem', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <span>📍 Origin:</span>
+                                            <span style={{ color: 'var(--color-warning)', fontWeight: 500 }}>{item.visitorLocation}</span>
+                                          </div>
+                                        )}
+
+                                        {/* Contact Details */}
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                                          {item.visitorEmail && (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                              <span style={{ color: 'var(--color-text-secondary)' }}>✉️</span> {item.visitorEmail}
+                                            </span>
+                                          )}
+                                          {item.visitorPhone && (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                              <span style={{ color: 'var(--color-text-secondary)' }}>📞</span> {item.visitorPhone}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
+                                    <div style={{
+                                      fontSize: '0.8rem',
+                                      color: 'var(--color-text-primary)',
+                                      fontStyle: 'italic',
+                                      lineHeight: '1.4',
+                                      background: 'var(--card-bg-subtle)',
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      borderLeft: '3px solid #6366f1'
+                                    }}>
+                                      "{item.purpose}"
+                                    </div>
+                                  </td>
+
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'top' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.75rem' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-primary)' }}>
+                                        <span style={{ color: 'var(--color-text-secondary)' }}>📅</span>
+                                        <span style={{ fontWeight: 500 }}>
+                                          {new Date(item.scheduledAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </span>
+                                      </div>
+
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px dashed var(--card-border)', paddingLeft: '8px', marginLeft: '4px', marginTop: '4px' }}>
+                                        <div style={{ color: 'var(--color-text-secondary)' }}>
+                                          Scheduled: <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{new Date(item.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+
+                                        {item.checkedInAt && (
+                                          <div style={{ color: 'var(--color-success)' }}>
+                                            🟢 Checked In: <span style={{ fontWeight: 500 }}>{new Date(item.checkedInAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                          </div>
+                                        )}
+
+                                        {item.checkedOutAt && (
+                                          <div style={{ color: 'var(--color-danger)' }}>
+                                            🔴 Checked Out: <span style={{ fontWeight: 500 }}>{new Date(item.checkedOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                          </div>
+                                        )}
+
+                                        {item.deniedReason && (
+                                          <div style={{
+                                            color: 'var(--color-danger)',
+                                            background: 'rgba(239, 68, 68, 0.1)',
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            marginTop: '4px',
+                                            border: '1px solid rgba(239, 68, 68, 0.15)',
+                                            fontSize: '0.7rem'
+                                          }}>
+                                            ⚠️ Deny Reason: {item.deniedReason}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  <td style={{ padding: '20px 16px', verticalAlign: 'middle' }}>
+                                    <StatusIndicator status={item.status} />
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* VIEW: Employee - My Future Visits */}
+              {currentView === 'employee_future' && (() => {
+
+                const now = new Date();
+                const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+                const futureVisits = employeeVisits.filter((item: any) => {
+                  if (!item.scheduledAt) return false;
+                  const schedDate = new Date(item.scheduledAt);
+                  const isFuture = schedDate > todayEnd;
+                  const isNotFinalized = !['CheckedOut', 'Denied', 'Cancelled', 'cancellation_pending_reception'].includes(item.status);
+                  return isFuture && isNotFinalized;
+                }).sort((a: any, b: any) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+                return (
+                  <div>
+                    <div className="table-card" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+                      <div className="table-header" style={{ borderBottom: '1px solid var(--card-border)' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Calendar size={20} style={{ color: 'var(--indigo-primary)' }} />
+                            Upcoming Scheduled Visitors
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Future visits where you are the host. Read-only — add a remark to help security prepare.</div>
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--indigo-primary)', fontWeight: 600, background: 'rgba(200, 78, 60, 0.08)', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(200, 78, 60, 0.2)' }}>
+                          {futureVisits.length} Upcoming Visit{futureVisits.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      <div className="table-container">
+                        {loading ? (
+                          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--color-text-secondary)' }}>
+                            <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+                            <div>Loading future visits…</div>
+                          </div>
+                        ) : futureVisits.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '60px', color: 'var(--color-text-secondary)' }}>
+                            <Calendar size={40} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
+                            <div style={{ fontSize: '1rem', fontWeight: 500 }}>No upcoming visits scheduled</div>
+                            <div style={{ fontSize: '0.8rem', marginTop: '6px', color: 'var(--color-text-secondary)' }}>Use <strong style={{ color: 'var(--color-text-secondary)' }}>Invite Future Guest</strong> to pre-register visitors</div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '8px 0' }}>
+                            {futureVisits.map((item: any) => {
+                              const schedDate = new Date(item.scheduledAt);
+                              const daysFromNow = Math.ceil((schedDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                              const isThisWeek = daysFromNow <= 7;
+                              return (
+                                <div key={item.id} style={{
+                                  background: darkMode ? 'rgba(255,255,255,0.025)' : 'var(--card-bg-subtle)',
+                                  border: '1px solid var(--card-border)',
+                                  borderRadius: '12px',
+                                  padding: '20px 24px',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'flex-start',
+                                  gap: '20px',
+                                  transition: 'border-color 0.2s',
+                                }}
+                                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--indigo-primary)')}
+                                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--card-border)')}
+                                >
+                                  {/* LEFT: Visitor Info */}
+                                  <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flex: 1 }}>
+                                    <Avatar name={item.visitorName} visitorType={item.visitorType} size="lg" src={item.photoUrl || undefined} />
+                                    <div style={{ flex: 1 }}>
+                                      <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text-primary)', marginBottom: '4px' }}>
+                                        {item.visitorName}
+                                      </div>
+                                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                        <span>🏢 {item.visitorCompany || 'Independent'}</span>
+                                        <span style={{ opacity: 0.4 }}>•</span>
+                                        <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600 }}>{item.visitorType}</span>
+                                        {item.visitorEmail && (
+                                          <>
+                                            <span style={{ opacity: 0.4 }}>•</span>
+                                            <span>✉ {item.visitorEmail}</span>
+                                          </>
+                                        )}
+                                      </div>
+                                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                        <span>📋 Purpose: <strong style={{ color: darkMode ? 'var(--color-purple-accent)' : '#1e1b4b' }}>{item.purpose}</strong></span>
+                                      </div>
+
+                                      {/* Remark Preview */}
+                                      {item.remarks && (
+                                        <div style={{
+                                          marginTop: '10px',
+                                          background: darkMode ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.05)',
+                                          border: darkMode ? '1px solid rgba(99,102,241,0.2)' : '1px solid rgba(99,102,241,0.3)',
+                                          borderRadius: '8px',
+                                          padding: '8px 12px',
+                                          display: 'flex',
+                                          gap: '8px',
+                                          alignItems: 'flex-start',
+                                          fontSize: '0.8rem'
+                                        }}>
+                                          <MessageSquare size={14} style={{ color: darkMode ? 'var(--color-indigo-accent)' : '#4338ca', flexShrink: 0, marginTop: '2px' }} />
+                                          <div>
+                                            <div style={{ color: darkMode ? 'var(--color-indigo-accent)' : '#4338ca', fontWeight: 600, fontSize: '0.7rem', marginBottom: '2px' }}>YOUR REMARK FOR SECURITY</div>
+                                            <div style={{ color: darkMode ? 'var(--color-purple-accent)' : '#1e1b4b', fontWeight: 500 }}>{item.remarks}</div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* RIGHT: Date + Actions */}
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px', flexShrink: 0 }}>
+                                    {/* Date/time block */}
+                                    <div style={{ textAlign: 'right' }}>
+                                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: isThisWeek ? (darkMode ? '#fbbf24' : '#b45309') : 'var(--color-text-primary)' }}>
+                                        {schedDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                                      </div>
+                                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                                        {schedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </div>
+                                      <div style={{ fontSize: '0.7rem', marginTop: '2px', color: daysFromNow === 1 ? (darkMode ? '#f87171' : '#dc2626') : isThisWeek ? (darkMode ? '#fbbf24' : '#b45309') : (darkMode ? '#818cf8' : '#4f46e5'), fontWeight: 600 }}>
+                                        {daysFromNow === 1 ? '• Tomorrow' : `• In ${daysFromNow} days`}
+                                      </div>
+                                    </div>
+
+                                    {/* Status badge */}
+                                    <StatusIndicator status={item.status} />
+
+                                    {/* Remark button */}
+                                    <button
+                                      onClick={() => {
+                                        setShowRemarkModal(item);
+                                        setRemarkText(item.remarks || '');
+                                      }}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        background: item.remarks
+                                          ? (darkMode ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.1)')
+                                          : (darkMode ? 'rgba(255,255,255,0.05)' : 'var(--menu-item-bg)'),
+                                        border: item.remarks
+                                          ? (darkMode ? '1px solid rgba(99,102,241,0.35)' : '1px solid rgba(99,102,241,0.3)')
+                                          : (darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--card-border)'),
+                                        borderRadius: '8px',
+                                        padding: '7px 14px',
+                                        color: item.remarks
+                                          ? (darkMode ? '#a5b4fc' : '#4f46e5')
+                                          : (darkMode ? '#a1a1aa' : 'var(--color-text-primary)'),
+                                        cursor: 'pointer',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 600,
+                                        transition: 'all 0.2s',
+                                      }}
+                                    >
+                                      <Edit2 size={13} />
+                                      {item.remarks ? 'Edit Remark' : 'Add Remark'}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* VIEW: Employee - Invite Future Visitors */}
+              {currentView === 'employee_invite' && (
+                <div style={{ maxWidth: '850px', margin: '0 auto' }}>
+                  <div className="table-card" style={{ padding: '36px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)' }}>
+                    <div style={{ marginBottom: '28px', borderBottom: '1px solid var(--card-border)', paddingBottom: '20px' }}>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                        Invite Expected Guest (Pre-Registration)
+                      </h3>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '6px' }}>
+                        Register visitor credentials for a future schedule. You will be set automatically as the host.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handlePreRegister}>
+                      {/* SECTION 1: VISITOR INFO */}
+                      <div style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: 'var(--indigo-primary)', display: 'flex' }}><User size={18} /></span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Visitor credentials</span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor Full Name *</label>
+                          <input type="text" className="form-input" required value={preName} onChange={e => setPreName(e.target.value)} placeholder="Jane Doe" style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Company / Organization</label>
+                          <input type="text" className="form-input" value={preCompany} onChange={e => setPreCompany(e.target.value)} placeholder="Acme Corp" style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Email Address</label>
+                          <input
+                            type="email"
+                            className="form-input"
+                            value={preEmail}
+                            onChange={e => setPreEmail(e.target.value)}
+                            placeholder="jane@doe.com"
+                            style={{ width: '100%', height: '42px', fontSize: '0.9rem' }}
+                          />
+                          {preEmail.trim().length > 0 && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(preEmail.trim()) ? (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '4px', fontWeight: 500 }}>
+                              ⚠️ Please enter a valid email address (e.g. name@domain.com)
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Example: name@domain.com</div>
+                          )}
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Phone Number</label>
+                            {prePhone.trim() && (() => {
+                              const clean = prePhone.trim();
+                              let activePrefix = prePhoneCountryCode;
+                              let checkDigits = clean.replace(/\D/g, '');
+                              if (clean.startsWith('+')) {
+                                const matchedPrefix = ['+971', '+353', '+880', '+977', '+234', '+254', '+233', '+852', '+886', '+358', '+966'].find(p => clean.startsWith(p));
+                                activePrefix = matchedPrefix || clean.substring(0, 3);
+                                checkDigits = clean.replace(activePrefix, '').replace(/\D/g, '');
+                              }
+                              const limit = getPhoneLimit(activePrefix);
+                              const isWrongLength = checkDigits.length !== limit;
+                              return (
+                                <span style={{ fontSize: '0.75rem', color: isWrongLength ? '#ef4444' : '#10b981', fontWeight: 600 }}>
+                                  {checkDigits.length} / {limit} digits {isWrongLength && '(Incorrect length)'}
+                                </span>
+                              );
+                            })()}
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <select
+                              className="form-input"
+                              value={prePhoneCountryCode}
+                              onChange={e => setPrePhoneCountryCode(e.target.value)}
+                              style={{ width: '110px', background: 'var(--menu-item-bg)', padding: '10px 8px', height: '42px', fontSize: '0.9rem' }}
+                            >
+                              <option value="+1">+1 (US)</option>
+                              <option value="+91">+91 (IN)</option>
+                              <option value="+44">+44 (UK)</option>
+                              <option value="+61">+61 (AU)</option>
+                              <option value="+65">+65 (SG)</option>
+                              <option value="+971">+971 (AE)</option>
+                              <option value="+49">+49 (DE)</option>
+                              <option value="+33">+33 (FR)</option>
+                              <option value="+81">+81 (JP)</option>
+                              <option value="+82">+82 (KR)</option>
+                              <option value="+27">+27 (ZA)</option>
+                              <option value="+55">+55 (BR)</option>
+                            </select>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={prePhone}
+                              onChange={e => setPrePhone(e.target.value)}
+                              placeholder="(555) 0199"
+                              style={{ flex: 1, height: '42px', fontSize: '0.9rem' }}
+                            />
+                          </div>
+                          {(() => {
+                            const clean = prePhone.trim();
+                            if (!clean) return <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Select country code &amp; enter local number</div>;
+
+                            let activePrefix = prePhoneCountryCode;
+                            let checkDigits = clean.replace(/\D/g, '');
+                            let finalPhoneVal = '';
+                            if (clean.startsWith('+')) {
+                              const matchedPrefix = ['+971', '+353', '+880', '+977', '+234', '+254', '+233', '+852', '+886', '+358', '+966'].find(p => clean.startsWith(p));
+                              activePrefix = matchedPrefix || clean.substring(0, 3);
+                              checkDigits = clean.replace(activePrefix, '').replace(/\D/g, '');
+                              finalPhoneVal = clean;
+                            } else {
+                              finalPhoneVal = `${prePhoneCountryCode}${clean}`;
+                            }
+
+                            const limit = getPhoneLimit(activePrefix);
+                            const isOver = checkDigits.length > limit;
+                            const isUnder = checkDigits.length > 0 && checkDigits.length < limit;
+                            const phoneRegex = /^\+[1-9][0-9\s\-()]{6,19}$/;
+                            const isFormatInvalid = !phoneRegex.test(finalPhoneVal);
+
+                            if (isOver || isUnder || isFormatInvalid) {
+                              return (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '4px', fontWeight: 500 }}>
+                                  {isOver
+                                    ? `⚠️ Max digits exceeded for ${activePrefix} (Limit is ${limit} digits)`
+                                    : isUnder
+                                      ? `⚠️ Too few digits for ${activePrefix} (Must be exactly ${limit} digits)`
+                                      : `⚠️ Invalid phone format (Must start with country code prefix)`}
+                                </div>
+                              );
+                            }
+                            return <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Select country code &amp; enter local number</div>;
+                          })()}
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor's Office Location (Address / City)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={preLocation}
+                          onChange={e => setPreLocation(e.target.value)}
+                          placeholder="e.g. 123 Main St, New York or Bangalore HQ"
+                          style={{ width: '100%', height: '42px', fontSize: '0.9rem' }}
+                        />
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Simple location/address to trace back origin if needed</div>
+                      </div>
+
+                      {/* SECTION 2: VISIT DETAILS */}
+                      <div style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '8px', marginBottom: '20px', marginTop: '32px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: 'var(--indigo-primary)', display: 'flex' }}><History size={18} /></span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Visit details</span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor Classification</label>
+                          <select className="form-input" value={preType} onChange={(e: any) => setPreType(e.target.value)} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
+                            <option value="Guest">Guest</option>
+                            <option value="Vendor">Vendor</option>
+                            <option value="Contractor">Contractor</option>
+                            <option value="Candidate">Candidate</option>
+                            <option value="VIP">VIP</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Scheduled Date &amp; Time *</label>
+                          <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} max={getMaxFutureISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>* Dates further than 6 months from now cannot be selected.</div>
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: '32px' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Purpose of Visit *</label>
+                        <input type="text" className="form-input" required value={prePurpose} onChange={e => setPrePurpose(e.target.value)} placeholder="Quarterly sync" style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid var(--card-border)', paddingTop: '24px' }}>
+                        <Button type="submit" variant="primary" style={{ padding: '12px 36px', fontSize: '0.9rem' }}>
+                          Send Invitation &amp; Register
+                        </Button>
+                      </div>
+                    </form>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* VIEW: Blacklist Review Queue */}
+              {currentView === 'blacklist_review' && (
+                <div>
+                  {/* Header summary */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <div>
+                      <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <ShieldAlert size={22} style={{ color: 'var(--color-danger)' }} />
+                        Security Flag Review Queue
+                      </h2>
+                      <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                        {flaggedVisitors.length > 0
+                          ? `${flaggedVisitors.length} visitor${flaggedVisitors.length > 1 ? 's' : ''} flagged by security — review and decide action`
+                          : 'No pending flags — all clear'}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      {user.role === 'Admin' && (
+                        <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setShowAddBlModal(true)}>
+                          <Plus size={16} />
+                          <span>Manually Blacklist Person</span>
+                        </button>
+                      )}
+                      {flaggedVisitors.length > 0 && (
+                        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '8px 18px', color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.88rem' }}>
+                          ⚠️ {flaggedVisitors.length} Pending Review{flaggedVisitors.length > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {flaggedVisitors.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '80px 24px', background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: '16px' }}>
+                      <ShieldAlert size={48} style={{ margin: '0 auto 20px', color: 'var(--color-success)', opacity: 0.6 }} />
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-success)' }}>All Clear — No Pending Reviews</div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '8px' }}>Security guards have not flagged any new visitors for blacklist review.</div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      {flaggedVisitors.map((v: any) => (
+                        <div key={v.id} style={{
+                          background: 'var(--card-bg)',
+                          border: '1px solid rgba(239,68,68,0.2)',
+                          borderRadius: '16px',
+                          overflow: 'hidden',
+                          boxShadow: '0 4px 24px rgba(239,68,68,0.08)'
+                        }}>
+                          {/* Card Header */}
+                          <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'rgba(239,68,68,0.15)', border: '2px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-danger)', flexShrink: 0 }}>
+                              {v.fullName?.charAt(0).toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--color-danger)' }}>{v.fullName}</div>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                                {v.email && <span>{v.email}</span>}
+                                {v.email && v.phone && <span style={{ margin: '0 8px', color: 'var(--color-text-secondary)' }}>|</span>}
+                                {v.phone && <span>{v.phone}</span>}
+                                {v.company && <span style={{ marginLeft: '8px', color: 'var(--color-text-secondary)' }}>· {v.company}</span>}
+                              </div>
+                            </div>
+                            <Badge tone="danger" dot={true}>Pending Review</Badge>
+                          </div>
+
+                          {/* Card Body */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0', borderBottom: '1px solid var(--card-border)' }}>
+                            {/* Flagged By */}
+                            <div style={{ padding: '16px 24px', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '6px' }}>🛡 Flagged by</div>
+                              <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{v.flaggedByName}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '3px' }}>
+                                {v.flaggedAt ? new Date(v.flaggedAt).toLocaleString() : 'Date unknown'}
+                              </div>
+                            </div>
+
+                            {/* Visit History */}
+                            <div style={{ padding: '16px 24px', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '6px' }}>📋 Visit history</div>
+                              <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{v.visitHistory.length} recorded visit{v.visitHistory.length !== 1 ? 's' : ''}</div>
+                              {v.visitHistory.length > 0 && (
+                                <div style={{ fontSize: '0.73rem', color: 'var(--color-text-secondary)', marginTop: '3px' }}>
+                                  Last: {new Date(v.visitHistory[0].scheduledAt || v.visitHistory[0].createdAt).toLocaleDateString()}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Visitor Type */}
+                            <div style={{ padding: '16px 24px' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '6px' }}>🏷 Visitor type</div>
+                              <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>{v.visitorType || 'Guest'}</div>
+                            </div>
+                          </div>
+
+                          {/* Flag Reason */}
+                          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--card-border)' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginBottom: '8px' }}>⚠️ Security flag reason</div>
+                            <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '8px', padding: '12px 16px', color: 'var(--color-danger)', fontSize: '0.88rem', lineHeight: '1.5', fontStyle: 'italic' }}>
+                              "{v.flagReason}"
+                            </div>
+                          </div>
+
+                          {/* Admin Decision Actions */}
+                          {user.role === 'Admin' && (
+                            <div style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '12px', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginRight: 'auto' }}>
+                                📌 Your decision will be logged and applied immediately
+                              </span>
+                              <button
+                                className="btn btn-secondary"
+                                style={{ padding: '9px 20px', fontSize: '0.85rem', borderColor: 'rgba(74,222,128,0.4)', color: 'var(--color-success)' }}
+                                onClick={() => handleDismissBlacklist(v.id)}
+                              >
+                                ✓ Clear Flag — Allow Entry
+                              </button>
+                              <button
+                                className="btn btn-danger"
+                                style={{ padding: '9px 20px', fontSize: '0.85rem' }}
+                                onClick={() => handleConfirmBlacklist(v.id, v.fullName, v.flagReason)}
+                              >
+                                🚫 Confirm Blacklist
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Confirmed Blacklist Section */}
+                  <div style={{ marginTop: '48px', marginBottom: '24px' }}>
+                    <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <ShieldAlert size={22} style={{ color: 'var(--color-danger)' }} />
+                      Confirmed Blacklisted Visitors
+                    </h2>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                      {confirmedBlacklisted.length > 0
+                        ? `${confirmedBlacklisted.length} visitor${confirmedBlacklisted.length > 1 ? 's' : ''} currently banned from entering the premises`
+                        : 'No confirmed blacklisted visitors'}
+                    </p>
+                  </div>
+
+                  {confirmedBlacklisted.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px 24px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--card-border)', borderRadius: '16px' }}>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>No visitors currently confirmed on the blacklist.</div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {confirmedBlacklisted.map((v: any) => (
+                        <div key={v.id} style={{
+                          background: 'var(--card-bg)',
+                          border: '1px solid var(--card-border)',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          boxShadow: '0 2px 12px rgba(0,0,0,0.15)'
+                        }}>
+                          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, color: 'var(--color-danger)', flexShrink: 0 }}>
+                              {v.fullName?.charAt(0).toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--color-text-primary)' }}>{v.fullName}</div>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                                {v.email && <span>{v.email}</span>}
+                                {v.email && v.phone && <span style={{ margin: '0 8px', color: 'var(--color-text-secondary)' }}>|</span>}
+                                {v.phone && <span>{v.phone}</span>}
+                                {v.company && <span style={{ marginLeft: '8px', color: 'var(--color-text-secondary)' }}>· {v.company}</span>}
+                              </div>
+                            </div>
+                            {user.role === 'Admin' && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                style={{ padding: '6px 14px', fontSize: '0.8rem', borderColor: 'var(--color-text-secondary)', color: 'var(--color-text-primary)' }}
+                                onClick={() => handleRemoveFromBlacklist(v.id)}
+                              >
+                                Remove from Blacklist
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* VIEW: Today's Queue */}
+              {currentView === 'queue' && (
+                <div>
+                  {/* Stat summary bar */}
+                  <div className="stats-row">
+                    <div className="stat-card">
+                      <div className="stat-card-header">
+                        <span>Expected Invites</span>
+                        <Clock size={16} color="#60a5fa" />
+                      </div>
+                      <div className="stat-value">{queueStats.expected}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-header">
+                        <span>Checked In / In Office</span>
+                        <UserCheck size={16} color="#4ade80" />
+                      </div>
+                      <div className="stat-value">{queueStats.checkedin}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-header">
+                        <span>Waiting in Lobby</span>
+                        <Clock size={16} color="#fbbf24" />
+                      </div>
+                      <div className="stat-value" style={{ color: 'var(--color-warning)' }}>{queueStats.waiting}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-header">
+                        <span>Departed Today</span>
+                        <Clock size={16} color="#a1a1aa" />
+                      </div>
+                      <div className="stat-value">{queueStats.checkedout}</div>
+                    </div>
+                  </div>
+
+                  {/* Data Table */}
+                  <div className="table-card">
+                    <div className="table-header">
+                      <div style={{ display: 'flex', gap: '12px', width: '60%' }}>
+                        <div style={{ position: 'relative', width: '100%' }}>
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Filter queue by visitor, host, purpose..."
+                            value={queueSearch}
+                            onChange={e => setQueueSearch(e.target.value)}
+                            style={{ paddingLeft: '36px' }}
+                          />
+                          <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+                        </div>
+                      </div>
+                      {user.role === 'Receptionist' && (
+                        <button className="btn btn-primary" onClick={() => setShowPreRegModal(true)}>
+                          <Plus size={16} />
+                          <span>Pre-Register Guest</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="table-wrapper">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Visitor Details</th>
+                            <th>Classification</th>
+                            <th>Host Employee</th>
+                            <th>Purpose of Visit</th>
+                            <th>Check In Time</th>
+                            <th>Status</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredQueue.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} style={{ padding: '40px 0', color: 'var(--color-text-secondary)', textAlign: 'center' }}>
+                                No visitors registered in lobby queue today.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredQueue.map((item) => (
+                              <tr key={item.id}>
+                                <td style={{ padding: '16px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <Avatar name={item.visitorName} visitorType={item.visitorType} size="md" src={item.photoUrl || undefined} />
+                                    <div>
+                                      <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{item.visitorName}</div>
+                                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>🏢 {item.visitorCompany || 'Independent'}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span style={{ color: `var(--visitor-${item.visitorType?.toLowerCase()}-text)`, fontWeight: 600, fontSize: '0.85rem' }}>
+                                    {item.visitorType}
+                                  </span>
+                                </td>
+                                <td>
+                                  <div style={{ fontWeight: 500 }}>{item.hostName}</div>
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{item.hostPhone}</div>
+                                </td>
+                                <td style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {item.purpose}
+                                </td>
+                                <td>
+                                  {item.checkedInAt ? new Date(item.checkedInAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                                </td>
+                                <td>
+                                  <StatusIndicator status={item.status} />
+                                </td>
+                                <td style={{ textAlign: 'right' }}>
+                                  {item.isBlacklisted ? (
+                                    <span className="badge badge-danger" style={{ background: '#ef4444', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>⚠️ BLACKLISTED</span>
+                                  ) : (
+                                    <>
+                                      {item.status === 'Waiting' && user.role === 'Receptionist' && (
+                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                          <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => triggerCheckIn(item.id)}>
+                                            Approve Entry
+                                          </button>
+                                          <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
+                                            Deny
+                                          </button>
+                                        </div>
+                                      )}
+                                      {(item.status === 'CheckedIn' || item.status === 'InMeeting') && user.role === 'Receptionist' && (
+                                        <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleCheckOut(item.id)}>
+                                          Check Out
+                                        </button>
+                                      )}
+                                      {item.status === 'Denied' && (
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>Denied: {item.deniedReason}</span>
+                                      )}
+                                      {item.status === 'Expected' && (
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-indigo-accent)' }}>Pre-Registered</span>
+                                      )}
+                                      {item.status === 'CheckedOut' && (
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Departed</span>
+                                      )}
+                                    </>
+                                  )}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* VIEW: Employees Directory */}
+              {currentView === 'employees' && (
+                <div>
+                  <div className="table-card">
+                    <div className="table-header">
+                      <div style={{ position: 'relative', width: '50%' }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="Search host directory by name or department..."
+                          value={empSearch}
+                          onChange={e => setEmpSearch(e.target.value)}
+                          style={{ paddingLeft: '36px' }}
+                        />
+                        <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-secondary)' }} />
+                      </div>
+                      {user.role === 'Admin' && (
+                        <button className="btn btn-primary" onClick={() => setShowAddEmpModal(true)}>
+                          <Plus size={16} />
+                          <span>Add Employee</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="table-wrapper">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Host Name</th>
+                            <th>Department</th>
+                            <th>Email Address</th>
+                            <th>Phone Number</th>
+                            <th>Location Desk</th>
+                            <th>Status</th>
+                            {user.role === 'Admin' && <th style={{ textAlign: 'right' }}>Actions</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredEmployees.length === 0 ? (
+                            <tr>
+                              <td colSpan={user.role === 'Admin' ? 7 : 6} style={{ textAlign: 'center', padding: '30px 0', color: 'var(--color-text-secondary)' }}>
+                                No employees found matching directory search.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredEmployees.map((e) => (
+                              <tr key={e.id}>
+                                <td style={{ fontWeight: 600 }}>{e.fullName}</td>
+                                <td>
+                                  <span style={{ fontSize: '0.8rem', background: 'rgba(99,102,241,0.1)', color: 'var(--color-indigo-accent)', padding: '4px 8px', borderRadius: '4px' }}>
+                                    {e.departmentName}
+                                  </span>
+                                </td>
+                                <td>{e.email}</td>
+                                <td>{e.phone}</td>
+                                <td>Floor {e.floor || 'N/A'}</td>
+                                <td>
+                                  <span style={{ color: e.isActive ? '#4ade80' : '#ef4444', fontSize: '0.85rem', fontWeight: 600 }}>
+                                    {e.isActive ? 'Active' : 'Inactive'}
+                                  </span>
+                                </td>
+                                {user.role === 'Admin' && (
+                                  <td style={{ textAlign: 'right' }}>
+                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                      <button
+                                        className="btn btn-secondary"
+                                        style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                        onClick={() => startEditEmployee(e)}
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        className="btn btn-danger"
+                                        style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                                        onClick={() => handleRemoveEmployee(e.id, e.fullName)}
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
+              {/* VIEW: Analytics Summary Charts */}
+              {currentView === 'analytics' && analytics && (
+                <div>
+                  {/* Stat Summary Cards */}
+                  <div className="stats-row">
+                    <div className="stat-card">
+                      <div className="stat-card-header">
+                        <span>Lobby Dwell Avg Time</span>
+                        <Clock size={16} />
+                      </div>
+                      <div className="stat-value">{analytics.avgVisitMinutes} <span style={{ fontSize: '1rem', color: 'var(--color-text-secondary)' }}>mins</span></div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Checked-out guests average</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-header">
+                        <span>Today's Registrations</span>
+                        <Users size={16} />
+                      </div>
+                      <div className="stat-value">{analytics.todaysVisitors} <span style={{ fontSize: '1rem', color: 'var(--color-text-secondary)' }}>guests</span></div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Today's lobby volume</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-header">
+                        <span>Total Registrations (30d)</span>
+                        <Users size={16} style={{ color: 'var(--color-indigo-accent)' }} />
+                      </div>
+                      <div className="stat-value" style={{ color: 'var(--color-indigo-accent)' }}>{analytics.total30d} <span style={{ fontSize: '1rem', color: 'var(--color-text-secondary)' }}>total</span></div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Rolling 30-day volume</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-header">
+                        <span>Repeat Guest Rate</span>
+                        <UserCheck size={16} />
+                      </div>
+                      <div className="stat-value">{analytics.repeatRate}%</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>{analytics.repeatVisitors} repeat guests (30d)</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-header">
+                        <span>Blocked Incidents (30d)</span>
+                        <ShieldAlert size={16} color="#ef4444" />
+                      </div>
+                      <div className="stat-value" style={{ color: 'var(--color-danger)' }}>{analytics.deniedEntries}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '4px' }}>Today: {analytics.deniedEntriesToday} blocked</div>
+                    </div>
+                  </div>
+
+                  {/* Recharts Graphical Visualizer - Row 1 */}
+                  <div className="charts-grid">
+                    <div className="chart-card">
+                      <h3 style={{ marginBottom: '20px', fontWeight: 600 }}>Visitor Volume History (7 Days)</h3>
+                      <div style={{ width: '100%', height: '280px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={analytics.weeklyTrend}>
+                            <defs>
+                              <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
+                            <XAxis dataKey="date" stroke="#a1a1aa" fontSize={11} />
+                            <YAxis stroke="#a1a1aa" fontSize={11} allowDecimals={false} />
+                            <Tooltip contentStyle={{ background: 'var(--card-bg-solid)', borderColor: 'var(--card-border)', color: 'var(--color-text-primary)', borderRadius: '8px' }} labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }} itemStyle={{ color: 'var(--color-text-primary)' }} />
+                            <Area type="monotone" dataKey="count" name="Visits" stroke="#6366f1" fillOpacity={1} fill="url(#colorCount)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="chart-card">
+                      <h3 style={{ marginBottom: '20px', fontWeight: 600 }}>Visits by Department (30d)</h3>
+                      <div style={{ width: '100%', height: '280px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <ResponsiveContainer width="100%" height="70%">
+                          <PieChart>
+                            <Pie
+                              data={analytics.visitorsByDept}
+                              dataKey="count"
+                              nameKey="department"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={50}
+                              outerRadius={70}
+                              fill="#8884d8"
+                              labelLine={false}
+                            >
+                              {analytics.visitorsByDept.map((_: any, index: number) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ background: 'var(--card-bg-solid)', borderColor: 'var(--card-border)', color: 'var(--color-text-primary)', borderRadius: '8px' }} labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }} itemStyle={{ color: 'var(--color-text-primary)' }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        {/* Manual Legend listing with percentages */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginTop: '10px', fontSize: '0.8rem' }}>
+                          {analytics.visitorsByDept.map((entry: any, index: number) => {
+                            const total = analytics.visitorsByDept.reduce((acc: number, curr: any) => acc + curr.count, 0);
+                            const pct = total > 0 ? Math.round((entry.count / total) * 100) : 0;
+                            return (
+                              <div key={entry.department} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <div style={{ width: '10px', height: '10px', background: COLORS[index % COLORS.length], borderRadius: '50%' }}></div>
+                                <span>{entry.department}: {entry.count} ({pct}%)</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recharts Graphical Visualizer - Row 2 */}
+                  <div className="charts-grid">
+                    <div className="chart-card">
+                      <h3 style={{ marginBottom: '20px', fontWeight: 600 }}>Lobby Load by Hour (30d Peak Times)</h3>
+                      <div style={{ width: '100%', height: '280px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={analytics.hourlyData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
+                            <XAxis dataKey="hour" stroke="#a1a1aa" fontSize={10} />
+                            <YAxis stroke="#a1a1aa" fontSize={11} allowDecimals={false} />
+                            <Tooltip contentStyle={{ background: 'var(--card-bg-solid)', borderColor: 'var(--card-border)', color: 'var(--color-text-primary)', borderRadius: '8px' }} labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }} itemStyle={{ color: 'var(--color-text-primary)' }} />
+                            <Bar dataKey="count" name="Registrations" radius={[4, 4, 0, 0]}>
+                              {analytics.hourlyData.map((_: any, index: number) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="chart-card">
+                      <h3 style={{ marginBottom: '20px', fontWeight: 600 }}>Top Purposes of Visit (30d Intent)</h3>
+                      <div style={{ width: '100%', height: '280px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart layout="vertical" data={analytics.visitorsByPurpose}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
+                            <XAxis type="number" stroke="#a1a1aa" fontSize={11} allowDecimals={false} />
+                            <YAxis dataKey="purpose" type="category" stroke="#a1a1aa" fontSize={10} width={120} />
+                            <Tooltip contentStyle={{ background: 'var(--card-bg-solid)', borderColor: 'var(--card-border)', color: 'var(--color-text-primary)', borderRadius: '8px' }} labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }} itemStyle={{ color: 'var(--color-text-primary)' }} />
+                            <Bar dataKey="count" name="Visits" radius={[0, 4, 4, 0]}>
+                              {analytics.visitorsByPurpose.map((_: any, index: number) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
+
             </div>
-          )}
-
-
-
-        </div>
-      </main>
-      </>
+          </main>
+        </>
       )}
 
       {/* MODAL: Pre-Register Guest */}
       {showPreRegModal && (
         <div className="modal-overlay" style={{ padding: isMobile ? '12px' : '0', overflowY: 'auto', zIndex: 1100 }}>
-          <div className="modal-content" style={{ 
-            maxWidth: '850px', 
-            width: isMobile ? '100%' : '90%', 
+          <div className="modal-content" style={{
+            maxWidth: '850px',
+            width: isMobile ? '100%' : '90%',
             background: 'var(--card-bg)', border: '1px solid var(--card-border)',
             boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
             borderRadius: '12px',
@@ -7300,10 +7300,10 @@ export default function App() {
                   Provide visitor credentials and allocate an internal host for the visit.
                 </p>
               </div>
-              <button 
-                style={{ 
-                  background: 'var(--menu-item-bg-hover)', border: '1px solid var(--card-border)', 
-                  color: 'var(--color-text-secondary)', 
+              <button
+                style={{
+                  background: 'var(--menu-item-bg-hover)', border: '1px solid var(--card-border)',
+                  color: 'var(--color-text-secondary)',
                   cursor: 'pointer',
                   padding: '10px',
                   borderRadius: '50%',
@@ -7311,7 +7311,7 @@ export default function App() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   transition: 'background 0.2s'
-                }} 
+                }}
                 onClick={() => setShowPreRegModal(false)}
               >
                 <X size={20} />
@@ -7339,12 +7339,12 @@ export default function App() {
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '12px' : '24px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Email Address</label>
-                  <input 
-                    type="email" 
-                    className="form-input" 
-                    value={preEmail} 
-                    onChange={e => setPreEmail(e.target.value)} 
-                    placeholder="jane@doe.com" 
+                  <input
+                    type="email"
+                    className="form-input"
+                    value={preEmail}
+                    onChange={e => setPreEmail(e.target.value)}
+                    placeholder="jane@doe.com"
                     style={{ width: '100%', height: '42px', fontSize: '0.9rem' }}
                   />
                   {preEmail.trim().length > 0 && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(preEmail.trim()) ? (
@@ -7377,10 +7377,10 @@ export default function App() {
                     })()}
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <select 
-                      className="form-input" 
-                      value={prePhoneCountryCode} 
-                      onChange={e => setPrePhoneCountryCode(e.target.value)} 
+                    <select
+                      className="form-input"
+                      value={prePhoneCountryCode}
+                      onChange={e => setPrePhoneCountryCode(e.target.value)}
                       style={{ width: '110px', background: 'var(--menu-item-bg)', padding: '10px 8px', height: '42px', fontSize: '0.9rem' }}
                     >
                       <option value="+1">+1 (US)</option>
@@ -7396,19 +7396,19 @@ export default function App() {
                       <option value="+27">+27 (ZA)</option>
                       <option value="+55">+55 (BR)</option>
                     </select>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={prePhone} 
-                      onChange={e => setPrePhone(e.target.value)} 
-                      placeholder="(555) 0199" 
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={prePhone}
+                      onChange={e => setPrePhone(e.target.value)}
+                      placeholder="(555) 0199"
                       style={{ flex: 1, height: '42px', fontSize: '0.9rem' }}
                     />
                   </div>
                   {(() => {
                     const clean = prePhone.trim();
                     if (!clean) return <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Select country code &amp; enter local number</div>;
-                    
+
                     let activePrefix = prePhoneCountryCode;
                     let checkDigits = clean.replace(/\D/g, '');
                     let finalPhoneVal = '';
@@ -7420,21 +7420,21 @@ export default function App() {
                     } else {
                       finalPhoneVal = `${prePhoneCountryCode}${clean}`;
                     }
- 
+
                     const limit = getPhoneLimit(activePrefix);
                     const isOver = checkDigits.length > limit;
                     const isUnder = checkDigits.length > 0 && checkDigits.length < limit;
                     const phoneRegex = /^\+[1-9][0-9\s\-()]{6,19}$/;
                     const isFormatInvalid = !phoneRegex.test(finalPhoneVal);
- 
+
                     if (isOver || isUnder || isFormatInvalid) {
                       return (
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '4px', fontWeight: 500 }}>
-                          {isOver 
-                            ? `⚠️ Max digits exceeded for ${activePrefix} (Limit is ${limit} digits)` 
+                          {isOver
+                            ? `⚠️ Max digits exceeded for ${activePrefix} (Limit is ${limit} digits)`
                             : isUnder
-                            ? `⚠️ Too few digits for ${activePrefix} (Must be exactly ${limit} digits)`
-                            : `⚠️ Invalid phone format (Must start with country code prefix)`}
+                              ? `⚠️ Too few digits for ${activePrefix} (Must be exactly ${limit} digits)`
+                              : `⚠️ Invalid phone format (Must start with country code prefix)`}
                         </div>
                       );
                     }
@@ -7442,26 +7442,26 @@ export default function App() {
                   })()}
                 </div>
               </div>
- 
+
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor's Office Location (Address / City)</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={preLocation} 
-                  onChange={e => setPreLocation(e.target.value)} 
-                  placeholder="e.g. 123 Main St, New York or Bangalore HQ" 
+                <input
+                  type="text"
+                  className="form-input"
+                  value={preLocation}
+                  onChange={e => setPreLocation(e.target.value)}
+                  placeholder="e.g. 123 Main St, New York or Bangalore HQ"
                   style={{ width: '100%', height: '42px', fontSize: '0.9rem' }}
                 />
                 <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Simple location/address to trace back origin if needed</div>
               </div>
- 
+
               {/* SECTION 2: VISIT DETAILS */}
               <div style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '8px', marginBottom: '20px', marginTop: '32px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ color: 'var(--indigo-primary)', display: 'flex' }}><History size={18} /></span>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Visit details</span>
               </div>
- 
+
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '12px' : '24px', marginBottom: '20px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Visitor Classification</label>
@@ -7476,10 +7476,10 @@ export default function App() {
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Scheduled Date &amp; Time *</label>
                   <input type="datetime-local" className="form-input" required value={preScheduled} onChange={e => setPreScheduled(e.target.value)} min={getLocalISOString()} max={getMaxFutureISOString()} style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
-                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>* Dates more than 6 months from now cannot be selected.</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>* Dates further than 6 months from now cannot be selected.</div>
                 </div>
               </div>
- 
+
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: isMobile ? '12px' : '24px', marginBottom: '32px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Filter by Dept</label>
@@ -7504,7 +7504,7 @@ export default function App() {
                   <input type="text" className="form-input" required value={prePurpose} onChange={e => setPrePurpose(e.target.value)} placeholder="Quarterly sync" style={{ width: '100%', height: '42px', fontSize: '0.9rem' }} />
                 </div>
               </div>
- 
+
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid var(--card-border)', paddingTop: '24px' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowPreRegModal(false)} style={{ padding: '12px 32px', fontSize: '0.9rem' }}>Cancel</button>
                 <button type="submit" className="btn btn-primary" style={{ padding: '12px 36px', fontSize: '0.9rem', background: 'linear-gradient(135deg, var(--indigo-primary), var(--indigo-secondary))', border: 'none', color: '#fff' }}>
@@ -7521,9 +7521,9 @@ export default function App() {
         const activeVisit = queue.find(v => v.id === showCheckInPhotoModal);
         return (
           <div className="modal-overlay">
-            <div className="modal-content" style={{ 
-              maxWidth: '500px', 
-              width: '90%', 
+            <div className="modal-content" style={{
+              maxWidth: '500px',
+              width: '90%',
               background: 'var(--card-bg)', border: '1px solid var(--card-border)',
               boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
               borderRadius: '12px',
@@ -7534,15 +7534,15 @@ export default function App() {
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
                   Visitor Photo Capture
                 </h3>
-                <button 
-                  style={{ 
-                    background: 'none', border: 'none', 
-                    color: 'var(--color-text-secondary)', 
+                <button
+                  style={{
+                    background: 'none', border: 'none',
+                    color: 'var(--color-text-secondary)',
                     cursor: 'pointer',
                     padding: '4px',
                     display: 'flex',
                     alignItems: 'center'
-                  }} 
+                  }}
                   onClick={() => {
                     stopCamera();
                     setShowCheckInPhotoModal(null);
@@ -7601,17 +7601,17 @@ export default function App() {
                   <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f59e0b', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <ShieldAlert size={14} style={{ color: '#f59e0b' }} /> Complete Missing Visitor Details
                   </div>
-                  
+
                   {!activeVisit.visitorEmail && (
                     <div style={{ marginBottom: '12px' }}>
                       <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Email Address *</label>
-                      <input 
-                        type="email" 
-                        className="form-input" 
-                        value={completeEmail} 
-                        onChange={e => setCompleteEmail(e.target.value)} 
-                        placeholder="visitor@example.com" 
-                        style={{ width: '100%', height: '38px', fontSize: '0.85rem' }} 
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={completeEmail}
+                        onChange={e => setCompleteEmail(e.target.value)}
+                        placeholder="visitor@example.com"
+                        style={{ width: '100%', height: '38px', fontSize: '0.85rem' }}
                       />
                     </div>
                   )}
@@ -7620,10 +7620,10 @@ export default function App() {
                     <div>
                       <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Phone Number *</label>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <select 
-                          className="form-input" 
-                          value={completePhoneCountryCode} 
-                          onChange={e => setCompletePhoneCountryCode(e.target.value)} 
+                        <select
+                          className="form-input"
+                          value={completePhoneCountryCode}
+                          onChange={e => setCompletePhoneCountryCode(e.target.value)}
                           style={{ width: '90px', background: 'var(--menu-item-bg)', padding: '6px', height: '38px', fontSize: '0.85rem' }}
                         >
                           <option value="+1">+1 (US)</option>
@@ -7639,13 +7639,13 @@ export default function App() {
                           <option value="+27">+27 (ZA)</option>
                           <option value="+55">+55 (BR)</option>
                         </select>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          value={completePhone} 
-                          onChange={e => setCompletePhone(e.target.value)} 
-                          placeholder="(555) 0199" 
-                          style={{ flex: 1, height: '38px', fontSize: '0.85rem' }} 
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={completePhone}
+                          onChange={e => setCompletePhone(e.target.value)}
+                          placeholder="(555) 0199"
+                          style={{ flex: 1, height: '38px', fontSize: '0.85rem' }}
                         />
                       </div>
                     </div>
@@ -7654,9 +7654,9 @@ export default function App() {
               )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid var(--card-border)', paddingTop: '20px' }}>
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
+                <button
+                  type="button"
+                  className="btn btn-secondary"
                   onClick={() => {
                     stopCamera();
                     setShowCheckInPhotoModal(null);
@@ -7666,9 +7666,9 @@ export default function App() {
                 >
                   Cancel
                 </button>
-                <button 
-                  type="button" 
-                  className="btn btn-primary" 
+                <button
+                  type="button"
+                  className="btn btn-primary"
                   disabled={!capturedPhoto}
                   onClick={async () => {
                     if (!showCheckInPhotoModal || !capturedPhoto) return;
@@ -7699,7 +7699,7 @@ export default function App() {
                           setAlertMessage({ type: 'error', text: 'Phone number is required to complete check-in.' });
                           return;
                         }
-                        
+
                         let finalPhone = '';
                         if (trimmedPhone.startsWith('+')) {
                           finalPhone = trimmedPhone;
@@ -7724,9 +7724,9 @@ export default function App() {
                         }
                         const limit = getPhoneLimit(activePrefix);
                         if (checkDigits.length !== limit) {
-                          setAlertMessage({ 
-                            type: 'error', 
-                            text: `Phone number must be exactly ${limit} digits for ${activePrefix}. Currently it has ${checkDigits.length} digits.` 
+                          setAlertMessage({
+                            type: 'error',
+                            text: `Phone number must be exactly ${limit} digits for ${activePrefix}. Currently it has ${checkDigits.length} digits.`
                           });
                           return;
                         }
@@ -7739,10 +7739,10 @@ export default function App() {
                     await handleApproveCheckIn(vid, capturedPhoto, emailToSave, phoneToSave);
                     setCapturedPhoto(null);
                   }}
-                  style={{ 
-                    padding: '10px 24px', 
-                    fontSize: '0.9rem', 
-                    background: capturedPhoto ? 'linear-gradient(135deg, var(--indigo-primary), var(--indigo-secondary))' : 'var(--card-border)', 
+                  style={{
+                    padding: '10px 24px',
+                    fontSize: '0.9rem',
+                    background: capturedPhoto ? 'linear-gradient(135deg, var(--indigo-primary), var(--indigo-secondary))' : 'var(--card-border)',
                     cursor: capturedPhoto ? 'pointer' : 'not-allowed',
                     opacity: capturedPhoto ? 1 : 0.6
                   }}
@@ -7757,8 +7757,8 @@ export default function App() {
 
       {/* MODAL: Arrival Visitor Photo (Mobile Only) */}
       {showArrivalPhotoModal && (() => {
-        const activeVisit = queue.find(item => item.id === showArrivalPhotoModal) || 
-                            futureInvitations.find(item => item.id === showArrivalPhotoModal);
+        const activeVisit = queue.find(item => item.id === showArrivalPhotoModal) ||
+          futureInvitations.find(item => item.id === showArrivalPhotoModal);
         const visitorName = activeVisit?.visitorName || 'Visitor';
 
         return (
@@ -7769,7 +7769,7 @@ export default function App() {
                   <Camera size={20} style={{ color: 'var(--color-indigo-accent)' }} />
                   Capture Visitor Arrival Photo
                 </h3>
-                <button 
+                <button
                   style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
                   onClick={() => {
                     stopCamera();
@@ -7824,9 +7824,9 @@ export default function App() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid var(--card-border)', paddingTop: '16px' }}>
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
+                <button
+                  type="button"
+                  className="btn btn-secondary"
                   onClick={() => {
                     stopCamera();
                     setShowArrivalPhotoModal(null);
@@ -7836,14 +7836,14 @@ export default function App() {
                 >
                   Cancel
                 </button>
-                <button 
-                  type="button" 
-                  className="btn btn-primary" 
+                <button
+                  type="button"
+                  className="btn btn-primary"
                   disabled={!capturedPhoto}
                   onClick={async () => {
                     if (!showArrivalPhotoModal || !capturedPhoto) return;
                     const vid = showArrivalPhotoModal;
-                    
+
                     try {
                       // 1. Get visitorId for this visit
                       if (activeVisit?.visitorId) {
@@ -7865,10 +7865,10 @@ export default function App() {
                       setShowArrivalPhotoModal(null);
                     }
                   }}
-                  style={{ 
-                    padding: '10px 24px', 
-                    fontSize: '0.9rem', 
-                    background: capturedPhoto ? 'linear-gradient(135deg, #10b981, #059669)' : 'var(--card-border)', 
+                  style={{
+                    padding: '10px 24px',
+                    fontSize: '0.9rem',
+                    background: capturedPhoto ? 'linear-gradient(135deg, #10b981, #059669)' : 'var(--card-border)',
                     cursor: capturedPhoto ? 'pointer' : 'not-allowed',
                     opacity: capturedPhoto ? 1 : 0.6
                   }}
@@ -7893,13 +7893,13 @@ export default function App() {
             <form onSubmit={handleDenyCheckIn}>
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Deny Reason *</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  required 
-                  value={denyReason} 
-                  onChange={e => setDeniedReason(e.target.value)} 
-                  placeholder="Visitor does not match identification records" 
+                <input
+                  type="text"
+                  className="form-input"
+                  required
+                  value={denyReason}
+                  onChange={e => setDeniedReason(e.target.value)}
+                  placeholder="Visitor does not match identification records"
                 />
               </div>
 
@@ -7936,7 +7936,7 @@ export default function App() {
               Are you sure you want to log out of your session? You will need to sign in again to access your dashboard.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <button 
+              <button
                 type="button"
                 className="btn btn-secondary"
                 onClick={() => setShowLogoutConfirmModal(false)}
@@ -7944,7 +7944,7 @@ export default function App() {
               >
                 Cancel
               </button>
-              <button 
+              <button
                 type="button"
                 className="btn btn-danger"
                 onClick={() => {
@@ -8126,13 +8126,13 @@ export default function App() {
             <form onSubmit={handleFlagBlacklist}>
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '6px' }}>Reason for Flagging *</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  required 
-                  value={flagReasonStr} 
-                  onChange={e => setFlagReasonStr(e.target.value)} 
-                  placeholder="Suspicious behavior or unauthorized entry attempt" 
+                <input
+                  type="text"
+                  className="form-input"
+                  required
+                  value={flagReasonStr}
+                  onChange={e => setFlagReasonStr(e.target.value)}
+                  placeholder="Suspicious behavior or unauthorized entry attempt"
                 />
               </div>
 
@@ -8223,27 +8223,27 @@ export default function App() {
                 {/* Left Side: Photo */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
                   {showPassModal.photoUrl ? (
-                    <img 
-                      src={showPassModal.photoUrl} 
-                      alt="Visitor" 
-                      style={{ 
-                        width: '120px', 
-                        height: '120px', 
-                        objectFit: 'cover', 
-                        borderRadius: '8px', 
+                    <img
+                      src={showPassModal.photoUrl}
+                      alt="Visitor"
+                      style={{
+                        width: '120px',
+                        height: '120px',
+                        objectFit: 'cover',
+                        borderRadius: '8px',
                         border: '2px solid #e5e7eb',
                         backgroundColor: '#f3f4f6'
-                      }} 
+                      }}
                     />
                   ) : (
-                    <div style={{ 
-                      width: '120px', 
-                      height: '120px', 
-                      borderRadius: '8px', 
-                      border: '2px dashed #d1d5db', 
-                      display: 'flex', 
+                    <div style={{
+                      width: '120px',
+                      height: '120px',
+                      borderRadius: '8px',
+                      border: '2px dashed #d1d5db',
+                      display: 'flex',
                       flexDirection: 'column',
-                      alignItems: 'center', 
+                      alignItems: 'center',
                       justifyContent: 'center',
                       color: '#9ca3af',
                       backgroundColor: '#f9fafb'
@@ -8398,18 +8398,18 @@ export default function App() {
 
       {/* SIDE PANEL: Security – Visitor Visit Details with Remarks Tab */}
       {selectedInviteDetails && (
-        <div style={{ 
-          position: 'fixed', 
-          top: 0, 
-          right: 0, 
-          bottom: 0, 
-          width: isMobile ? '100%' : '420px', 
-          background: 'var(--card-bg-solid)', 
-          borderLeft: isMobile ? 'none' : '1px solid var(--card-border)', 
-          boxShadow: 'var(--card-shadow)', 
-          zIndex: 9000, 
-          display: 'flex', 
-          flexDirection: 'column', 
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: isMobile ? '100%' : '420px',
+          background: 'var(--card-bg-solid)',
+          borderLeft: isMobile ? 'none' : '1px solid var(--card-border)',
+          boxShadow: 'var(--card-shadow)',
+          zIndex: 9000,
+          display: 'flex',
+          flexDirection: 'column',
           overflow: 'hidden',
           transition: 'var(--transition-theme)'
         }}>
@@ -8430,9 +8430,9 @@ export default function App() {
           {/* Tabs */}
           <div style={{ display: 'flex', gap: '8px', padding: '8px', borderBottom: '1px solid var(--card-border)' }}>
             {(['general', 'host', 'remarks'] as const).map(tab => (
-              <button 
-                key={tab} 
-                onClick={() => setDetailPanelTab(tab)} 
+              <button
+                key={tab}
+                onClick={() => setDetailPanelTab(tab)}
                 className={`tab-button ${detailPanelTab === tab ? 'active' : ''}`}
               >
                 {tab === 'general' ? '📋 General' : tab === 'host' ? '👤 Host' : (
@@ -8537,11 +8537,11 @@ export default function App() {
           animation: 'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
           background: 'var(--card-bg, #18181b)',
           borderRadius: '18px',
-          border: alertMessage.type === 'success' 
-            ? '1.5px solid rgba(16, 185, 129, 0.4)' 
+          border: alertMessage.type === 'success'
+            ? '1.5px solid rgba(16, 185, 129, 0.4)'
             : alertMessage.type === 'warning'
-            ? '1.5px solid rgba(245, 158, 11, 0.4)'
-            : '1.5px solid rgba(239, 68, 68, 0.4)',
+              ? '1.5px solid rgba(245, 158, 11, 0.4)'
+              : '1.5px solid rgba(239, 68, 68, 0.4)',
           boxShadow: '0 20px 30px -5px rgba(0, 0, 0, 0.5), 0 10px 15px -5px rgba(0, 0, 0, 0.3)',
           backdropFilter: 'blur(12px)',
           padding: '20px',
@@ -8551,21 +8551,21 @@ export default function App() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              background: alertMessage.type === 'success' 
-                ? 'rgba(16, 185, 129, 0.15)' 
+              background: alertMessage.type === 'success'
+                ? 'rgba(16, 185, 129, 0.15)'
                 : alertMessage.type === 'warning'
-                ? 'rgba(245, 158, 11, 0.15)'
-                : 'rgba(239, 68, 68, 0.15)',
-              border: alertMessage.type === 'success' 
-                ? '1px solid rgba(16, 185, 129, 0.3)' 
+                  ? 'rgba(245, 158, 11, 0.15)'
+                  : 'rgba(239, 68, 68, 0.15)',
+              border: alertMessage.type === 'success'
+                ? '1px solid rgba(16, 185, 129, 0.3)'
                 : alertMessage.type === 'warning'
-                ? '1px solid rgba(245, 158, 11, 0.3)'
-                : '1px solid rgba(239, 68, 68, 0.3)',
-              color: alertMessage.type === 'success' 
-                ? 'var(--color-success, #10b981)' 
+                  ? '1px solid rgba(245, 158, 11, 0.3)'
+                  : '1px solid rgba(239, 68, 68, 0.3)',
+              color: alertMessage.type === 'success'
+                ? 'var(--color-success, #10b981)'
                 : alertMessage.type === 'warning'
-                ? 'var(--color-warning, #f59e0b)'
-                : 'var(--color-danger, #ef4444)',
+                  ? 'var(--color-warning, #f59e0b)'
+                  : 'var(--color-danger, #ef4444)',
               borderRadius: '50%',
               padding: '10px',
               display: 'flex',
@@ -8584,27 +8584,27 @@ export default function App() {
             <div>
               <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: 'var(--color-text-primary, #ffffff)' }}>
                 {alertMessage.title || (
-                  alertMessage.type === 'success' 
-                    ? 'Operation Successful' 
+                  alertMessage.type === 'success'
+                    ? 'Operation Successful'
                     : alertMessage.type === 'warning'
-                    ? 'System Advisory'
-                    : 'Security Alert'
+                      ? 'System Advisory'
+                      : 'Security Alert'
                 )}
               </h4>
-              <span style={{ 
-                fontSize: '0.75rem', 
+              <span style={{
+                fontSize: '0.75rem',
                 fontWeight: 600,
-                color: alertMessage.type === 'success' 
-                  ? 'var(--color-success, #10b981)' 
+                color: alertMessage.type === 'success'
+                  ? 'var(--color-success, #10b981)'
                   : alertMessage.type === 'warning'
-                  ? 'var(--color-warning, #f59e0b)'
-                  : 'var(--color-danger, #ef4444)'
+                    ? 'var(--color-warning, #f59e0b)'
+                    : 'var(--color-danger, #ef4444)'
               }}>
-                {alertMessage.type === 'success' 
-                  ? 'System Notification' 
+                {alertMessage.type === 'success'
+                  ? 'System Notification'
                   : alertMessage.type === 'warning'
-                  ? 'Gate Control Warning'
-                  : 'Action Restricted'}
+                    ? 'Gate Control Warning'
+                    : 'Action Restricted'}
               </span>
             </div>
           </div>
@@ -8614,7 +8614,7 @@ export default function App() {
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-            <button 
+            <button
               onClick={() => setAlertMessage(null)}
               className="btn btn-secondary"
               style={{
@@ -8676,13 +8676,13 @@ export default function App() {
               </div>
               {realtimeNotification.photoUrl && (
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', margin: '4px 0 8px' }}>
-                  <div 
+                  <div
                     onClick={() => setShowFullscreenVisitorPhoto(realtimeNotification.photoUrl || null)}
                     style={{ position: 'relative', cursor: 'pointer' }}
                     title="Tap to view fullscreen photo"
                   >
-                    <img 
-                      src={realtimeNotification.photoUrl} 
+                    <img
+                      src={realtimeNotification.photoUrl}
                       alt={realtimeNotification.visitorName}
                       style={{
                         width: '130px',
@@ -8708,8 +8708,8 @@ export default function App() {
                       🔍 Tap Fullscreen
                     </div>
                   </div>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowFullscreenVisitorPhoto(realtimeNotification.photoUrl || null)}
                     style={{
                       background: 'transparent',
@@ -8729,7 +8729,7 @@ export default function App() {
               <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
                 Your pre-registered visitor, <strong style={{ color: 'var(--color-indigo-accent)' }}>{realtimeNotification.visitorName}</strong>, has just arrived at the lobby.
               </p>
-              <button 
+              <button
                 onClick={() => setRealtimeNotification(null)}
                 className="btn btn-primary"
                 style={{ alignSelf: 'flex-end', padding: '6px 16px', fontSize: '0.8rem' }}
@@ -8762,7 +8762,7 @@ export default function App() {
                 Visitor <strong style={{ color: 'var(--color-danger)' }}>{(realtimeNotification as any).visitorName}</strong> has arrived at security, but is currently marked as <strong style={{ color: 'var(--color-danger)' }}>blacklisted</strong>.
               </p>
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
-                <button 
+                <button
                   onClick={() => handleHostRejectBlacklisted((realtimeNotification as any).visitId || '', (realtimeNotification as any).visitorId || '', (realtimeNotification as any).visitorName)}
                   className="btn btn-danger"
                   disabled={!!pendingActionId}
@@ -8770,7 +8770,7 @@ export default function App() {
                 >
                   {pendingActionId === `reject_blacklisted_${(realtimeNotification as any).visitId}` ? <Loader2 size={14} className="animate-spin" /> : 'Reject Entry 🚫'}
                 </button>
-                <button 
+                <button
                   onClick={() => handleHostRequestUnblock((realtimeNotification as any).visitId || '', (realtimeNotification as any).visitorId || '', (realtimeNotification as any).visitorName)}
                   className="btn btn-warning"
                   disabled={!!pendingActionId}
@@ -8805,7 +8805,7 @@ export default function App() {
                 Host <strong style={{ color: 'var(--color-text-primary)' }}>{(realtimeNotification as any).hostName}</strong> requested to unblock visitor <strong style={{ color: 'var(--color-indigo-accent)' }}>{(realtimeNotification as any).visitorName}</strong>.
               </p>
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '6px' }}>
-                <button 
+                <button
                   onClick={() => handleAdminDenyUnblock((realtimeNotification as any).visitorId || '', (realtimeNotification as any).visitorName, (realtimeNotification as any).targetHostId)}
                   className="btn btn-danger"
                   disabled={!!pendingActionId}
@@ -8813,7 +8813,7 @@ export default function App() {
                 >
                   Deny Unblock ❌
                 </button>
-                <button 
+                <button
                   onClick={() => handleAdminApproveUnblock((realtimeNotification as any).visitorId || '', (realtimeNotification as any).visitorName, (realtimeNotification as any).targetHostId)}
                   className="btn btn-success"
                   disabled={!!pendingActionId}
@@ -8847,7 +8847,7 @@ export default function App() {
               <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
                 Admin has approved unblocking visitor <strong style={{ color: 'var(--color-success)' }}>{realtimeNotification.visitorName}</strong>. Entry is now permitted.
               </p>
-              <button 
+              <button
                 onClick={() => setRealtimeNotification(null)}
                 className="btn btn-success"
                 style={{ alignSelf: 'flex-end', padding: '6px 16px', fontSize: '0.8rem', background: 'var(--color-success)', color: '#fff', border: 'none' }}
@@ -8879,7 +8879,7 @@ export default function App() {
               <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
                 Admin has denied unblocking visitor <strong style={{ color: 'var(--color-danger)' }}>{realtimeNotification.visitorName}</strong>. Entry remains restricted.
               </p>
-              <button 
+              <button
                 onClick={() => setRealtimeNotification(null)}
                 className="btn btn-secondary"
                 style={{ alignSelf: 'flex-end', padding: '6px 16px', fontSize: '0.8rem' }}
@@ -8911,7 +8911,7 @@ export default function App() {
               <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
                 Host <strong style={{ color: 'var(--color-text-primary)' }}>{(realtimeNotification as any).hostName}</strong> has <strong style={{ color: 'var(--color-danger)' }}>REJECTED</strong> entry for blacklisted visitor <strong style={{ color: 'var(--color-danger)' }}>{realtimeNotification.visitorName}</strong>. Do NOT process entry further.
               </p>
-              <button 
+              <button
                 onClick={() => setRealtimeNotification(null)}
                 className="btn btn-secondary"
                 style={{ alignSelf: 'flex-end', padding: '6px 16px', fontSize: '0.8rem' }}
@@ -8943,17 +8943,17 @@ export default function App() {
               <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
                 Host <strong style={{ color: 'var(--color-text-primary)' }}>{realtimeNotification.hostName}</strong> is currently busy and has requested to delay <strong style={{ color: 'var(--color-text-primary)' }}>{realtimeNotification.visitorName}</strong>'s visit by <strong style={{ color: 'var(--color-warning)' }}>{realtimeNotification.delayMinutes} minutes</strong>.
               </p>
-              <div style={{ 
-                background: 'var(--card-bg-subtle)', 
-                borderRadius: '8px', 
-                padding: '8px 12px', 
+              <div style={{
+                background: 'var(--card-bg-subtle)',
+                borderRadius: '8px',
+                padding: '8px 12px',
                 fontSize: '0.8rem',
                 borderLeft: '3px solid var(--color-warning)',
                 color: 'var(--color-text-primary)'
               }}>
                 New expected arrival: <strong>{realtimeNotification.newTime}</strong>
               </div>
-              <button 
+              <button
                 onClick={() => setRealtimeNotification(null)}
                 className="btn btn-secondary"
                 style={{ alignSelf: 'flex-end', padding: '6px 16px', fontSize: '0.8rem', color: 'var(--color-text-primary)' }}
@@ -8967,7 +8967,7 @@ export default function App() {
 
       {/* Fullscreen Visitor Photo Modal */}
       {showFullscreenVisitorPhoto && (
-        <div 
+        <div
           onClick={() => setShowFullscreenVisitorPhoto(null)}
           style={{
             position: 'fixed',
@@ -9007,8 +9007,8 @@ export default function App() {
           >
             <X size={24} />
           </button>
-          
-          <img 
+
+          <img
             src={showFullscreenVisitorPhoto}
             alt="Visitor Fullscreen Photo"
             style={{
@@ -9044,18 +9044,18 @@ export default function App() {
             }}>
               <ShieldAlert size={32} />
             </div>
-            
+
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '10px' }}>
               Registration Blocked
             </h3>
-            
+
             <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', lineHeight: '1.6', marginBottom: '24px' }}>
               this person is blacklisted by admin/organisation, contact admin for further support.
             </p>
-            
-            <Button 
-              variant="danger" 
-              style={{ width: '100%', padding: '12px' }} 
+
+            <Button
+              variant="danger"
+              style={{ width: '100%', padding: '12px' }}
               onClick={handleCloseBlacklistBlockedModal}
             >
               Close
@@ -9081,22 +9081,22 @@ export default function App() {
             }}>
               <Clock size={32} className="pulse-slow" />
             </div>
-            
+
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '10px' }}>
               Session Expiring Soon
             </h3>
-            
+
             <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: '1.5', marginBottom: '24px' }}>
               You have been inactive. For security, your session will end in <strong style={{ color: 'var(--color-warning)' }}>{formatTime(warningCountdown)}</strong>.
             </p>
-            
+
             <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '24px', fontStyle: 'italic' }}>
               Move your mouse, scroll, or press any key to automatically stay logged in.
             </p>
-            
-            <Button 
-              variant="primary" 
-              style={{ width: '100%', padding: '12px' }} 
+
+            <Button
+              variant="primary"
+              style={{ width: '100%', padding: '12px' }}
               onClick={handleExtendSession}
             >
               Extend Session
