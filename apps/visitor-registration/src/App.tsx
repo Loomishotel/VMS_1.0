@@ -174,7 +174,7 @@ export default function App() {
 
   const matchingEmployees = hostSearchText.trim()
     ? employees.filter(emp => 
-        (!deptFilter || emp.departmentId === deptFilter) &&
+        (!deptFilter || emp.departmentId === deptFilter || emp.departmentName === deptFilter) &&
         emp.fullName.toLowerCase().split(' ').some((word: string) => word.startsWith(hostSearchText.toLowerCase().trim()))
       )
     : [];
@@ -349,6 +349,7 @@ export default function App() {
 
   // Fetch departments & employees when branchId changes
   useEffect(() => {
+    setDeptFilter('');
     if (!branchId) {
       setEmployees([]);
       setDepartments([]);
@@ -395,13 +396,13 @@ export default function App() {
 
         // Derive unique departments from the employee list dynamically
         const uniqueDepts = Array.from(new Set(mappedEmps.map(emp => emp.departmentName))).filter(Boolean);
-        setDepartments(uniqueDepts.map((name, idx) => ({ id: String(idx), name })));
+        setDepartments(uniqueDepts.map((name) => ({ id: name, name })));
       } catch (err: any) {
         console.error('Error loading branch specific data:', err.message);
         const mappedEmps = FALLBACK_EMPLOYEES[branchId] || [];
         setEmployees(mappedEmps);
         const uniqueDepts = Array.from(new Set(mappedEmps.map(emp => emp.departmentName))).filter(Boolean);
-        setDepartments(uniqueDepts.map((name, idx) => ({ id: String(idx), name })));
+        setDepartments(uniqueDepts.map((name) => ({ id: name, name })));
       }
     };
 

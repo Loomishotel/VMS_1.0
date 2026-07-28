@@ -1113,7 +1113,7 @@ export default function App() {
 
   const matchingPreEmployees = preHostSearchText.trim()
     ? employees.filter(emp =>
-        (!preRegDeptFilter || emp.departmentId === preRegDeptFilter) &&
+        (!preRegDeptFilter || emp.departmentId === preRegDeptFilter || emp.departmentName === preRegDeptFilter) &&
         emp.fullName.toLowerCase().split(' ').some((word: string) => word.startsWith(preHostSearchText.toLowerCase().trim()))
       )
     : [];
@@ -1375,6 +1375,24 @@ export default function App() {
             sendMobileDeviceNotification(
               '🚫 Blacklisted Entry Rejected',
               `Host ${p.hostName} rejected entry for blacklisted visitor ${p.visitorName}. Do not process further.`,
+              '/123.png'
+            );
+          }
+          fetchQueue(true);
+        }
+      })
+      .on('broadcast', { event: 'host_approved_arrival' }, (payload: any) => {
+        const p = payload.payload;
+        if (['Security', 'Admin'].includes(user.role)) {
+          setRealtimeNotification({
+            type: 'host_approved_arrival' as any,
+            visitorName: p.visitorName,
+            hostName: p.hostName
+          });
+          if (isMobile) {
+            sendMobileDeviceNotification(
+              '✅ Visit Entry Approved',
+              `Host ${p.hostName} approved entry for visitor ${p.visitorName}. Security may check them in.`,
               '/123.png'
             );
           }
@@ -2274,6 +2292,7 @@ export default function App() {
           deniedReason,
           zoneAccess,
           additionalGuests,
+          remarks,
           Visitor (
             id,
             fullName,
@@ -2328,7 +2347,8 @@ export default function App() {
               photoUrl: v.Visitor?.photoUrl || '',
               additionalGuests: v.additionalGuests || 0,
               isBlacklisted: isBl,
-              blacklistFlag: branchUserIds.includes(v.Visitor?.flaggedByUserId) ? (v.Visitor?.blacklistFlag || '') : 'none'
+              blacklistFlag: branchUserIds.includes(v.Visitor?.flaggedByUserId) ? (v.Visitor?.blacklistFlag || '') : 'none',
+              remarks: v.remarks || ''
             };
           })
           .filter((v: any) => {
@@ -3167,11 +3187,46 @@ export default function App() {
   };
 
   // Host Approve Arrival — called from notification popup, triggers full check-in flow
+  // Host Approve Arrival — updates remarks to 'Host Approved' and broadcasts to security
   const handleHostApproveArrival = async (visitId: string) => {
     setRealtimeNotification(null);
     setShowNotifDenyInput(false);
     setNotifDenyReason('');
-    await triggerCheckIn(visitId);
+
+    const matchedVisit = employeeVisits.find(v => v.id === visitId) || queue.find(v => v.id === visitId);
+    const visitorName = matchedVisit?.visitorName || (realtimeNotification as any)?.visitorName || 'Visitor';
+
+    return executeWithNetworkWatchdog(`approve_${visitId}`, async () => {
+      const { error: updateErr } = await supabase
+        .from('Visit')
+        .update({ remarks: 'Host Approved' })
+        .eq('id', visitId);
+
+      if (updateErr) throw updateErr;
+
+      await supabase.from('AuditLog').insert({
+        actorUserId: user.id,
+        action: 'VISIT_HOST_APPROVED',
+        entityType: 'Visit',
+        entityId: visitId
+      });
+
+      // Broadcast to security
+      const channel = supabase.channel('vms_global_broadcast');
+      await channel.send({
+        type: 'broadcast',
+        event: 'host_approved_arrival',
+        payload: {
+          visitId,
+          visitorName,
+          hostName: user?.fullName || 'Host'
+        }
+      });
+
+      setAlertMessage({ type: 'success', text: 'Visit entry request approved.' });
+      fetchQueue();
+      fetchEmployeeVisits();
+    });
   };
 
   // Host Deny Arrival from notification popup — saves reason, broadcasts to security
@@ -3926,7 +3981,12 @@ export default function App() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--card-border)', paddingTop: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <StatusIndicator status={item.status} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <StatusIndicator status={item.status} />
+                      {item.status === 'Waiting' && item.remarks === 'Host Approved' && (
+                        <Badge tone="success">✓ Host Approved</Badge>
+                      )}
+                    </div>
                     {item.isBlacklisted && <Badge tone="danger">⚠️ BLACKLISTED</Badge>}
                   </div>
                   
@@ -3938,7 +3998,7 @@ export default function App() {
                             className="btn btn-primary" 
                             disabled={!!pendingActionId}
                             style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }} 
-                            onClick={() => executeWithNetworkWatchdog(`arrive_${item.id}`, async () => { setShowArrivalPhotoModal(item.id); })}
+                            onClick={() => handleSecurityMarkArrived(item.id)}
                           >
                             {pendingActionId === `arrive_${item.id}` ? <Loader2 size={14} className="animate-spin" /> : 'Arrived'}
                           </button>
@@ -4099,11 +4159,16 @@ export default function App() {
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--card-border)', paddingTop: '10px' }}>
-                    <StatusIndicator status={item.status} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <StatusIndicator status={item.status} />
+                      {item.status === 'Waiting' && item.remarks === 'Host Approved' && (
+                        <Badge tone="success">✓ Host Approved</Badge>
+                      )}
+                    </div>
                     
                     <div style={{ display: 'flex', gap: '6px' }}>
                       {!isBl && ['Expected', 'Waiting'].includes(item.status) && isToday && (
-                        <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem' }} onClick={() => setShowArrivalPhotoModal(item.id)}>
+                        <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem' }} onClick={() => handleSecurityMarkArrived(item.id)}>
                           Mark Arrived
                         </button>
                       )}
@@ -4663,18 +4728,27 @@ export default function App() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--card-border)', paddingTop: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                  <StatusIndicator status={item.status} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <StatusIndicator status={item.status} />
+                    {item.status === 'Waiting' && item.remarks === 'Host Approved' && (
+                      <Badge tone="success">✓ Host Approved</Badge>
+                    )}
+                  </div>
                   
                   <div style={{ display: 'flex', gap: '6px' }}>
                     {item.status === 'Waiting' && (
-                      <>
-                        <button className="btn btn-success" style={{ padding: '6px 12px', fontSize: '0.75rem', background: 'var(--color-success)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600 }} onClick={() => triggerCheckIn(item.id)}>
-                          Approve ✓
-                        </button>
-                        <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => setShowDenyModal(item.id)}>
-                          Deny ✗
-                        </button>
-                      </>
+                      item.remarks === 'Host Approved' ? (
+                        <Badge tone="success">✓ Approved</Badge>
+                      ) : (
+                        <>
+                          <button className="btn btn-success" style={{ padding: '6px 12px', fontSize: '0.75rem', background: 'var(--color-success)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600 }} onClick={() => handleHostApproveArrival(item.id)}>
+                            Approve ✓
+                          </button>
+                          <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => setShowDenyModal(item.id)}>
+                            Deny ✗
+                          </button>
+                        </>
+                      )
                     )}
                     {item.status === 'Expected' && (
                       <>
@@ -4780,8 +4854,11 @@ export default function App() {
                   {item.deniedReason && <div style={{ color: 'var(--color-danger)', marginTop: '2px' }}>⚠️ Denied Reason: {item.deniedReason}</div>}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: '6px' }}>
                   <StatusIndicator status={item.status} />
+                  {item.status === 'Waiting' && item.remarks === 'Host Approved' && (
+                    <Badge tone="success">✓ Host Approved</Badge>
+                  )}
                 </div>
               </div>
             ))
@@ -4886,7 +4963,12 @@ export default function App() {
                   )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--card-border)', paddingTop: '10px' }}>
-                    <StatusIndicator status={item.status} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <StatusIndicator status={item.status} />
+                      {item.status === 'Waiting' && item.remarks === 'Host Approved' && (
+                        <Badge tone="success">✓ Host Approved</Badge>
+                      )}
+                    </div>
                     <button
                       onClick={() => {
                         setShowRemarkModal(item);
