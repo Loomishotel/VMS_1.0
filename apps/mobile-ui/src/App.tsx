@@ -148,14 +148,22 @@ export function Avatar({ src, name, size = 'md', className, style, ring, online,
     boxShadow: '0 0 0 2px var(--indigo-primary), 0 0 0 4px var(--bg-dark)',
   } : {};
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (src && (window as any).vmsShowFullscreenPhoto) {
+      e.stopPropagation();
+      (window as any).vmsShowFullscreenPhoto(src);
+    }
+  };
+
   return (
-    <span className={className} style={{
+    <span className={className} onClick={handleClick} style={{
       position: 'relative',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
       borderRadius: '8px',
+      cursor: src ? 'pointer' : 'default',
       ...sizeStyle,
       ...ringStyle,
       ...style
@@ -562,6 +570,15 @@ export default function App() {
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [showFullscreenVisitorPhoto, setShowFullscreenVisitorPhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    (window as any).vmsShowFullscreenPhoto = (src: string) => {
+      setShowFullscreenVisitorPhoto(src);
+    };
+    return () => {
+      delete (window as any).vmsShowFullscreenPhoto;
+    };
+  }, []);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null); // Request lock to prevent double clicks
   const [isNetworkSlow, setIsNetworkSlow] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -8454,13 +8471,15 @@ export default function App() {
                     <img 
                       src={showPassModal.photoUrl} 
                       alt="Visitor" 
+                      onClick={() => setShowFullscreenVisitorPhoto(showPassModal.photoUrl)}
                       style={{ 
                         width: '120px', 
                         height: '120px', 
                         objectFit: 'cover', 
                         borderRadius: '8px', 
                         border: '2px solid #e5e7eb',
-                        backgroundColor: '#f3f4f6'
+                        backgroundColor: '#f3f4f6',
+                        cursor: 'pointer'
                       }} 
                     />
                   ) : (
