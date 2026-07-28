@@ -5,7 +5,8 @@
     "JWT_SECRET",
     "VITE_SUPABASE_URL",
     "VITE_SUPABASE_ANON_KEY",
-    "VITE_API_URL"
+    "VITE_API_URL",
+    "VITE_VISITOR_REGISTRATION_URL"
   ],
   "tasks": {
     "build": {
