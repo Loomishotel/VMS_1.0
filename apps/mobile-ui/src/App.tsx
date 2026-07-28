@@ -48,22 +48,22 @@ const BACKEND_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 type View = 'queue' | 'employees' | 'blacklist' | 'analytics' | 'security_arrivals' | 'check_invite' | 'employee_scheduled' | 'employee_past' | 'employee_invite' | 'blacklist_review' | 'security_history' | 'employee_future';
 
-const getPhoneLimit = (prefix: string): number => {
-  const limits: Record<string, number> = {
-    '+1': 10,
-    '+91': 10,
-    '+44': 10,
-    '+61': 9,
-    '+65': 8,
-    '+971': 9,
-    '+49': 11,
-    '+33': 9,
-    '+81': 10,
-    '+82': 10,
-    '+27': 9,
-    '+55': 11
+const getPhoneLimitRules = (prefix: string) => {
+  const rules: Record<string, { min: number; max: number; label: string }> = {
+    '+1': { min: 10, max: 10, label: '10' },
+    '+91': { min: 10, max: 10, label: '10' },
+    '+44': { min: 9, max: 15, label: '9-15' },
+    '+61': { min: 9, max: 9, label: '9' },
+    '+65': { min: 8, max: 8, label: '8' },
+    '+971': { min: 9, max: 9, label: '9' },
+    '+49': { min: 10, max: 13, label: '10-13' },
+    '+33': { min: 9, max: 9, label: '9' },
+    '+81': { min: 10, max: 10, label: '10' },
+    '+82': { min: 9, max: 10, label: '9-10' },
+    '+27': { min: 9, max: 9, label: '9' },
+    '+55': { min: 10, max: 11, label: '10-11' }
   };
-  return limits[prefix] || 15;
+  return rules[prefix] || { min: 8, max: 15, label: '8-15' };
 };
 
 // ────────────────────────────────────────────────────────────────────────
@@ -467,10 +467,13 @@ export default function App() {
     visitorId?: string;
     visitId?: string;
     hostName?: string;
+    hostPhone?: string;
+    hostEmail?: string;
     targetHostId?: string;
     photoUrl?: string;
     delayMinutes?: number;
     newTime?: string;
+    deniedReason?: string;
   } | null>(null);
 
   const queueRef = useRef<any[]>([]);
@@ -540,6 +543,9 @@ export default function App() {
   const [showBlacklistBlockedModal, setShowBlacklistBlockedModal] = useState(false);
   const [showDenyModal, setShowDenyModal] = useState<string | null>(null); // holds visitId
   const [denyReason, setDeniedReason] = useState('');
+  // Inline deny reason state for the arrived notification popup
+  const [notifDenyReason, setNotifDenyReason] = useState('');
+  const [showNotifDenyInput, setShowNotifDenyInput] = useState(false);
   const [showPassModal, setShowPassModal] = useState<any | null>(null); // holds printed pass data
   const [showCheckInPhotoModal, setShowCheckInPhotoModal] = useState<string | null>(null); // holds visitId
   const [showArrivalPhotoModal, setShowArrivalPhotoModal] = useState<string | null>(null); // holds visitId for mobile arrival photo
@@ -968,6 +974,8 @@ export default function App() {
   const [preLocation, setPreLocation] = useState('');
   const [preType, setPreType] = useState<'Guest' | 'Vendor' | 'Contractor' | 'Candidate' | 'VIP'>('Guest');
   const [preHostId, setPreHostId] = useState('');
+  const [preHostSearchText, setPreHostSearchText] = useState('');
+  const [showPreHostSuggestions, setShowPreHostSuggestions] = useState(false);
   const [prePurpose, setPrePurpose] = useState('');
   const [preScheduled, setPreScheduled] = useState('');
   const [preGuestCount, setPreGuestCount] = useState<number>(0);
@@ -1103,6 +1111,39 @@ export default function App() {
     }
   }, [showPreRegModal, user, employees]);
 
+  const matchingPreEmployees = preHostSearchText.trim()
+    ? employees.filter(emp =>
+        (!preRegDeptFilter || emp.departmentId === preRegDeptFilter) &&
+        emp.fullName.toLowerCase().split(' ').some((word: string) => word.startsWith(preHostSearchText.toLowerCase().trim()))
+      )
+    : [];
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setShowPreHostSuggestions(false);
+    };
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
+
+  // Synchronize preHostSearchText when preHostId is set/changed or when modal is opened/closed
+  useEffect(() => {
+    if (preHostId && employees.length > 0) {
+      const match = employees.find(emp => emp.id === preHostId);
+      if (match) {
+        setPreHostSearchText(match.fullName);
+      }
+    } else {
+      setPreHostSearchText('');
+    }
+  }, [preHostId, employees, showPreRegModal]);
+
+  useEffect(() => {
+    if (!showPreRegModal) {
+      setShowPreHostSuggestions(false);
+    }
+  }, [showPreRegModal]);
+
   // Handle data fetching according to the active tab
   useEffect(() => {
     if (!token || !user) return;
@@ -1181,7 +1222,9 @@ export default function App() {
                     setRealtimeNotification({
                       type: 'arrived',
                       visitorName: visData.fullName,
-                      photoUrl: visData.photoUrl || undefined
+                      photoUrl: visData.photoUrl || undefined,
+                      visitId: newRecord.id,
+                      visitorId: newRecord.visitorId
                     });
                     if (isMobile) {
                       sendMobileDeviceNotification(
@@ -2729,7 +2772,11 @@ export default function App() {
   // Pre-Register Guest Handler
   const handlePreRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!preName || !preHostId || !prePurpose || !preScheduled) return;
+    if (!preName || !prePurpose || !preScheduled) return;
+    if (!preHostId) {
+      setAlertMessage({ type: 'error', text: 'Please select a valid Host Employee from the suggestions list.' });
+      return;
+    }
 
     // Validate Name (only alphabets and spaces)
     const nameRegex = /^[a-zA-Z\s]+$/;
@@ -2806,11 +2853,11 @@ export default function App() {
         activePrefix = matchedPrefix;
         checkDigits = cleanPhone.replace(activePrefix, '').replace(/\D/g, '');
       }
-      const limit = getPhoneLimit(activePrefix);
-      if (checkDigits.length !== limit) {
+      const rule = getPhoneLimitRules(activePrefix);
+      if (checkDigits.length < rule.min || checkDigits.length > rule.max) {
         setAlertMessage({ 
           type: 'error', 
-          text: `Phone number must be exactly ${limit} digits for ${activePrefix}. Currently it has ${checkDigits.length} digits.` 
+          text: `Phone number must be ${rule.label} digits for ${activePrefix}. Currently it has ${checkDigits.length} digits.` 
         });
         return;
       }
@@ -3116,6 +3163,58 @@ export default function App() {
       fetchEmployeeVisits();
       if (currentView === 'check_invite') fetchFutureInvitations();
       if (currentView === 'security_history') fetchPastRecords();
+    });
+  };
+
+  // Host Approve Arrival — called from notification popup, triggers full check-in flow
+  const handleHostApproveArrival = async (visitId: string) => {
+    setRealtimeNotification(null);
+    setShowNotifDenyInput(false);
+    setNotifDenyReason('');
+    await triggerCheckIn(visitId);
+  };
+
+  // Host Deny Arrival from notification popup — saves reason, broadcasts to security
+  const handleHostDenyArrivalFromNotif = async () => {
+    const visitId = realtimeNotification?.visitId;
+    if (!visitId || !notifDenyReason.trim()) return;
+
+    return executeWithNetworkWatchdog(`deny_notif_${visitId}`, async () => {
+      const { error: updateErr } = await supabase
+        .from('Visit')
+        .update({ status: 'Denied', deniedReason: notifDenyReason.trim() })
+        .eq('id', visitId);
+
+      if (updateErr) throw updateErr;
+
+      await supabase.from('AuditLog').insert({
+        actorUserId: user.id,
+        action: 'VISIT_STATUS_DENIED',
+        entityType: 'Visit',
+        entityId: visitId
+      });
+
+      // Broadcast denial to security so they see reason and host contact info
+      const channel = supabase.channel('vms_global_broadcast');
+      await channel.send({
+        type: 'broadcast',
+        event: 'blacklisted_host_rejected',
+        payload: {
+          visitId,
+          visitorId: realtimeNotification?.visitorId || '',
+          visitorName: realtimeNotification?.visitorName || '',
+          hostName: user?.fullName || 'Host',
+          hostPhone: user?.phone || '',
+          hostEmail: user?.email || '',
+          deniedReason: notifDenyReason.trim()
+        }
+      });
+
+      setRealtimeNotification(null);
+      setShowNotifDenyInput(false);
+      setNotifDenyReason('');
+      setAlertMessage({ type: 'warning', text: `Entry denied for ${realtimeNotification?.visitorName || 'visitor'}. Security has been notified.` });
+      fetchEmployeeVisits();
     });
   };
 
@@ -4568,9 +4667,14 @@ export default function App() {
                   
                   <div style={{ display: 'flex', gap: '6px' }}>
                     {item.status === 'Waiting' && (
-                      <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => setShowDenyModal(item.id)}>
-                        Deny
-                      </button>
+                      <>
+                        <button className="btn btn-success" style={{ padding: '6px 12px', fontSize: '0.75rem', background: 'var(--color-success)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600 }} onClick={() => triggerCheckIn(item.id)}>
+                          Approve ✓
+                        </button>
+                        <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => setShowDenyModal(item.id)}>
+                          Deny ✗
+                        </button>
+                      </>
                     )}
                     {item.status === 'Expected' && (
                       <>
@@ -4852,10 +4956,11 @@ export default function App() {
                   activePrefix = matchedPrefix || clean.substring(0, 3);
                   checkDigits = clean.replace(activePrefix, '').replace(/\D/g, '');
                 }
-                const limit = getPhoneLimit(activePrefix);
+                const rule = getPhoneLimitRules(activePrefix);
+                const isWrong = checkDigits.length < rule.min || checkDigits.length > rule.max;
                 return (
-                  <span style={{ fontSize: '0.7rem', color: checkDigits.length !== limit ? '#ef4444' : '#10b981', fontWeight: 600 }}>
-                    {checkDigits.length}/{limit} digits
+                  <span style={{ fontSize: '0.7rem', color: isWrong ? '#ef4444' : '#10b981', fontWeight: 600 }}>
+                    {checkDigits.length}/{rule.label} digits
                   </span>
                 );
               })()}
@@ -6072,6 +6177,19 @@ export default function App() {
                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                                   {item.status === 'Waiting' && (
                                     <>
+                                      <Button variant="primary" style={{ 
+                                        padding: '8px 16px', 
+                                        fontSize: '0.8rem',
+                                        fontWeight: 600,
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        background: 'var(--color-success)',
+                                        color: '#fff',
+                                        border: 'none',
+                                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+                                      }} onClick={() => triggerCheckIn(item.id)}>
+                                        Approve ✓
+                                      </Button>
                                       <Button variant="danger" style={{ 
                                         padding: '8px 16px', 
                                         fontSize: '0.8rem',
@@ -6080,7 +6198,7 @@ export default function App() {
                                         cursor: 'pointer',
                                         boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
                                       }} onClick={() => setShowDenyModal(item.id)}>
-                                        Deny
+                                        Deny ✗
                                       </Button>
                                     </>
                                   )}
@@ -6535,13 +6653,13 @@ export default function App() {
                             activePrefix = matchedPrefix || clean.substring(0, 3);
                             checkDigits = clean.replace(activePrefix, '').replace(/\D/g, '');
                           }
-                          const limit = getPhoneLimit(activePrefix);
-                          const isWrongLength = checkDigits.length !== limit;
-                          return (
-                            <span style={{ fontSize: '0.75rem', color: isWrongLength ? '#ef4444' : '#10b981', fontWeight: 600 }}>
-                              {checkDigits.length} / {limit} digits {isWrongLength && '(Incorrect length)'}
-                            </span>
-                          );
+                            const rule = getPhoneLimitRules(activePrefix);
+                            const isWrongLength = checkDigits.length < rule.min || checkDigits.length > rule.max;
+                            return (
+                              <span style={{ fontSize: '0.75rem', color: isWrongLength ? '#ef4444' : '#10b981', fontWeight: 600 }}>
+                                {checkDigits.length} / {rule.label} digits {isWrongLength && '(Incorrect length)'}
+                              </span>
+                            );
                         })()}
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -6589,9 +6707,9 @@ export default function App() {
                           finalPhoneVal = `${prePhoneCountryCode}${clean}`;
                         }
 
-                        const limit = getPhoneLimit(activePrefix);
-                        const isOver = checkDigits.length > limit;
-                        const isUnder = checkDigits.length > 0 && checkDigits.length < limit;
+                        const rule = getPhoneLimitRules(activePrefix);
+                        const isOver = checkDigits.length > rule.max;
+                        const isUnder = checkDigits.length > 0 && checkDigits.length < rule.min;
                         const phoneRegex = /^\+[1-9][0-9\s\-()]{6,19}$/;
                         const isFormatInvalid = !phoneRegex.test(finalPhoneVal);
 
@@ -6599,9 +6717,9 @@ export default function App() {
                           return (
                             <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '4px', fontWeight: 500 }}>
                               {isOver 
-                                ? `⚠️ Max digits exceeded for ${activePrefix} (Limit is ${limit} digits)` 
+                                ? `⚠️ Max digits exceeded for ${activePrefix} (Limit is ${rule.label} digits)` 
                                 : isUnder
-                                ? `⚠️ Too few digits for ${activePrefix} (Must be exactly ${limit} digits)`
+                                ? `⚠️ Too few digits for ${activePrefix} (Must be ${rule.label} digits)`
                                 : `⚠️ Invalid phone format (Must start with country code prefix)`}
                             </div>
                           );
@@ -7340,13 +7458,13 @@ export default function App() {
                         activePrefix = matchedPrefix || clean.substring(0, 3);
                         checkDigits = clean.replace(activePrefix, '').replace(/\D/g, '');
                       }
-                      const limit = getPhoneLimit(activePrefix);
-                      const isWrongLength = checkDigits.length !== limit;
-                      return (
-                        <span style={{ fontSize: '0.75rem', color: isWrongLength ? '#ef4444' : '#10b981', fontWeight: 600 }}>
-                          {checkDigits.length} / {limit} digits {isWrongLength && '(Incorrect length)'}
-                        </span>
-                      );
+                        const rule = getPhoneLimitRules(activePrefix);
+                        const isWrongLength = checkDigits.length < rule.min || checkDigits.length > rule.max;
+                        return (
+                          <span style={{ fontSize: '0.75rem', color: isWrongLength ? '#ef4444' : '#10b981', fontWeight: 600 }}>
+                            {checkDigits.length} / {rule.label} digits {isWrongLength && '(Incorrect length)'}
+                          </span>
+                        );
                     })()}
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -7394,9 +7512,9 @@ export default function App() {
                       finalPhoneVal = `${prePhoneCountryCode}${clean}`;
                     }
  
-                    const limit = getPhoneLimit(activePrefix);
-                    const isOver = checkDigits.length > limit;
-                    const isUnder = checkDigits.length > 0 && checkDigits.length < limit;
+                    const rule = getPhoneLimitRules(activePrefix);
+                    const isOver = checkDigits.length > rule.max;
+                    const isUnder = checkDigits.length > 0 && checkDigits.length < rule.min;
                     const phoneRegex = /^\+[1-9][0-9\s\-()]{6,19}$/;
                     const isFormatInvalid = !phoneRegex.test(finalPhoneVal);
  
@@ -7404,9 +7522,9 @@ export default function App() {
                       return (
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '4px', fontWeight: 500 }}>
                           {isOver 
-                            ? `⚠️ Max digits exceeded for ${activePrefix} (Limit is ${limit} digits)` 
+                            ? `⚠️ Max digits exceeded for ${activePrefix} (Limit is ${rule.label} digits)` 
                             : isUnder
-                            ? `⚠️ Too few digits for ${activePrefix} (Must be exactly ${limit} digits)`
+                            ? `⚠️ Too few digits for ${activePrefix} (Must be ${rule.label} digits)`
                             : `⚠️ Invalid phone format (Must start with country code prefix)`}
                         </div>
                       );
@@ -7462,14 +7580,70 @@ export default function App() {
                     ))}
                   </select>
                 </div>
-                <div>
+                <div onClick={e => e.stopPropagation()} style={{ position: 'relative' }}>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Host Employee *</label>
-                  <select className="form-input" required value={preHostId} onChange={e => setPreHostId(e.target.value)} style={{ background: 'var(--menu-item-bg)', width: '100%', height: '42px', fontSize: '0.9rem' }}>
-                    <option value="">-- Choose Host --</option>
-                    {employees.filter(emp => !preRegDeptFilter || emp.departmentId === preRegDeptFilter).map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.departmentName})</option>
-                    ))}
-                  </select>
+                  <input
+                    type="text"
+                    className="form-input"
+                    required
+                    placeholder="Type host name..."
+                    value={preHostSearchText}
+                    onChange={e => {
+                      setPreHostSearchText(e.target.value);
+                      setPreHostId('');
+                      setShowPreHostSuggestions(true);
+                    }}
+                    onFocus={() => setShowPreHostSuggestions(true)}
+                    style={{ width: '100%', height: '42px', fontSize: '0.9rem' }}
+                  />
+                  {showPreHostSuggestions && preHostSearchText.trim() && matchingPreEmployees.length > 0 && (
+                    <ul style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      background: 'var(--card-bg)',
+                      border: '1px solid var(--card-border)',
+                      borderRadius: '8px',
+                      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)',
+                      listStyle: 'none',
+                      padding: 0,
+                      margin: '4px 0 0 0',
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      zIndex: 1000
+                    }}>
+                      {matchingPreEmployees.map(emp => (
+                        <li
+                          key={emp.id}
+                          onClick={() => {
+                            setPreHostId(emp.id);
+                            setPreHostSearchText(emp.fullName);
+                            setShowPreHostSuggestions(false);
+                          }}
+                          style={{
+                            padding: '10px 14px',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            color: 'var(--color-text-primary)',
+                            borderBottom: '1px solid var(--card-border)',
+                            transition: 'background 0.2s',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--menu-item-bg-hover)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{emp.fullName}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{emp.departmentName} ({emp.email})</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {preHostSearchText.trim() && !preHostId && (
+                    <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '4px' }}>
+                      Please select a host employee from the suggestions.
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px', fontWeight: 500 }}>Purpose of Visit *</label>
@@ -7694,11 +7868,11 @@ export default function App() {
                           activePrefix = matchedPrefix;
                           checkDigits = trimmedPhone.replace(activePrefix, '').replace(/\D/g, '');
                         }
-                        const limit = getPhoneLimit(activePrefix);
-                        if (checkDigits.length !== limit) {
+                        const rule = getPhoneLimitRules(activePrefix);
+                        if (checkDigits.length < rule.min || checkDigits.length > rule.max) {
                           setAlertMessage({ 
                             type: 'error', 
-                            text: `Phone number must be exactly ${limit} digits for ${activePrefix}. Currently it has ${checkDigits.length} digits.` 
+                            text: `Phone number must be ${rule.label} digits for ${activePrefix}. Currently it has ${checkDigits.length} digits.` 
                           });
                           return;
                         }
@@ -8699,15 +8873,61 @@ export default function App() {
                 </div>
               )}
               <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
-                Your pre-registered visitor, <strong style={{ color: 'var(--color-indigo-accent)' }}>{realtimeNotification.visitorName}</strong>, has just arrived at the lobby.
+                Your visitor, <strong style={{ color: 'var(--color-indigo-accent)' }}>{realtimeNotification.visitorName}</strong>, has just arrived at the lobby and is waiting for your approval.
               </p>
-              <button 
-                onClick={() => setRealtimeNotification(null)}
-                className="btn btn-primary"
-                style={{ alignSelf: 'flex-end', padding: '6px 16px', fontSize: '0.8rem' }}
-              >
-                Acknowledge
-              </button>
+              {showNotifDenyInput ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Reason for denial <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                  <textarea
+                    rows={3}
+                    className="form-input"
+                    placeholder="Please enter a reason for denying this visitor..."
+                    value={notifDenyReason}
+                    onChange={e => setNotifDenyReason(e.target.value)}
+                    style={{ fontSize: '0.82rem', resize: 'vertical', minHeight: '70px' }}
+                    autoFocus
+                  />
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+                      onClick={() => { setShowNotifDenyInput(false); setNotifDenyReason(''); }}
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
+                      disabled={!notifDenyReason.trim() || !!pendingActionId}
+                      onClick={handleHostDenyArrivalFromNotif}
+                    >
+                      {pendingActionId?.startsWith('deny_notif_') ? <Loader2 size={14} className="animate-spin" /> : 'Confirm Denial'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    style={{ padding: '6px 14px', fontSize: '0.8rem', fontWeight: 600 }}
+                    onClick={() => setShowNotifDenyInput(true)}
+                  >
+                    Deny ✗
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-success"
+                    style={{ padding: '6px 16px', fontSize: '0.8rem', fontWeight: 600, background: 'var(--color-success)', color: '#fff', border: 'none' }}
+                    disabled={!realtimeNotification.visitId || !!pendingActionId}
+                    onClick={() => handleHostApproveArrival(realtimeNotification.visitId!)}
+                  >
+                    {pendingActionId?.startsWith('checkin_') ? <Loader2 size={14} className="animate-spin" /> : 'Approve ✓'}
+                  </button>
+                </div>
+              )}
             </>
           ) : (realtimeNotification as any).type === 'blacklisted_arrival' ? (
             <>
@@ -8881,8 +9101,40 @@ export default function App() {
                 </div>
               </div>
               <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-primary)', lineHeight: '1.5' }}>
-                Host <strong style={{ color: 'var(--color-text-primary)' }}>{(realtimeNotification as any).hostName}</strong> has <strong style={{ color: 'var(--color-danger)' }}>REJECTED</strong> entry for blacklisted visitor <strong style={{ color: 'var(--color-danger)' }}>{realtimeNotification.visitorName}</strong>. Do NOT process entry further.
+                Host <strong style={{ color: 'var(--color-text-primary)' }}>{(realtimeNotification as any).hostName}</strong> has <strong style={{ color: 'var(--color-danger)' }}>DENIED</strong> entry for visitor <strong style={{ color: 'var(--color-danger)' }}>{realtimeNotification.visitorName}</strong>. Do NOT process entry further.
               </p>
+              {(realtimeNotification as any).deniedReason && (
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  fontSize: '0.82rem',
+                  color: 'var(--color-danger)'
+                }}>
+                  <strong>Deny Reason:</strong> {(realtimeNotification as any).deniedReason}
+                </div>
+              )}
+              {((realtimeNotification as any).hostPhone || (realtimeNotification as any).hostEmail) && (
+                <div style={{
+                  background: 'rgba(99, 102, 241, 0.08)',
+                  border: '1px solid rgba(99, 102, 241, 0.2)',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.78rem', color: 'var(--color-indigo-accent)', marginBottom: '2px' }}>📞 Host Contact Info (for denied visitor):</div>
+                  {(realtimeNotification as any).hostPhone && (
+                    <div style={{ color: 'var(--color-text-primary)' }}>Phone: <strong>{(realtimeNotification as any).hostPhone}</strong></div>
+                  )}
+                  {(realtimeNotification as any).hostEmail && (
+                    <div style={{ color: 'var(--color-text-primary)' }}>Email: <strong>{(realtimeNotification as any).hostEmail}</strong></div>
+                  )}
+                </div>
+              )}
               <button 
                 onClick={() => setRealtimeNotification(null)}
                 className="btn btn-secondary"
