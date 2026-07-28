@@ -67,7 +67,27 @@ const getPhoneLimitRules = (prefix: string) => {
   return rules[prefix] || { min: 8, max: 15, label: '8-15' };
 };
 
-const visitorRegBaseURL = import.meta.env.VITE_VISITOR_REGISTRATION_URL || 'http://localhost:3001';
+
+// Resolve the visitor self-registration URL.
+// Priority: explicit env var -> auto-derived from current origin -> localhost fallback
+const _envRegURL = import.meta.env.VITE_VISITOR_REGISTRATION_URL;
+const visitorRegBaseURL = (() => {
+  // 1. Explicit env var (set in Vercel dashboard or local .env)
+  if (_envRegURL && _envRegURL.trim() !== '') return _envRegURL.trim();
+  // 2. Running on Vercel / non-localhost: derive visitor-registration URL from current host
+  if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
+    // Replace known dashboard/mobile subdomain patterns with visitor-registration
+    const origin = window.location.origin;
+    // e.g. vms-dashboard-ui.vercel.app -> vms-visitor-registration.vercel.app
+    const derived = origin
+      .replace('dashboard-ui', 'visitor-registration')
+      .replace('mobile-ui', 'visitor-registration');
+    // Only use derived if it actually changed (i.e. we found a pattern to replace)
+    if (derived !== origin) return derived;
+  }
+  // 3. Fallback for local development
+  return 'http://localhost:3001';
+})();
 
 // ────────────────────────────────────────────────────────────────────────
 // UI Primitives to replicate VMS Avatar & Icon UI Patterns
