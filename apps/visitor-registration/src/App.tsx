@@ -127,6 +127,107 @@ const authenticateForBranch = async (bId: string) => {
   }
 };
 
+interface TimelineStepProps {
+  number: string;
+  title: string;
+  desc: string;
+  status: 'completed' | 'active' | 'pending' | 'denied';
+  icon: React.ReactNode;
+  extra?: React.ReactNode;
+}
+
+function TimelineStep({ number, title, desc, status, icon, extra }: TimelineStepProps) {
+  let borderColor = 'var(--card-border)';
+  let bgClass = 'rgba(255,255,255,0.02)';
+  let dotBg = 'rgba(255,255,255,0.05)';
+  let textColor = 'var(--color-text-secondary)';
+  let titleColor = 'var(--color-text-primary)';
+  let strokeColor = 'var(--card-border)';
+
+  if (status === 'completed') {
+    borderColor = 'rgba(52, 211, 153, 0.4)';
+    bgClass = 'rgba(52, 211, 153, 0.04)';
+    dotBg = 'rgba(52, 211, 153, 0.15)';
+    textColor = 'var(--color-text-secondary)';
+    titleColor = '#34d399';
+    strokeColor = '#34d399';
+  } else if (status === 'active') {
+    borderColor = 'rgba(245, 158, 11, 0.4)';
+    bgClass = 'rgba(245, 158, 11, 0.04)';
+    dotBg = 'rgba(245, 158, 11, 0.15)';
+    textColor = 'var(--color-text-secondary)';
+    titleColor = '#fbbf24';
+    strokeColor = '#fbbf24';
+  } else if (status === 'denied') {
+    borderColor = 'rgba(239, 68, 68, 0.4)';
+    bgClass = 'rgba(239, 68, 68, 0.04)';
+    dotBg = 'rgba(239, 68, 68, 0.15)';
+    textColor = 'var(--color-text-secondary)';
+    titleColor = '#ef4444';
+    strokeColor = '#ef4444';
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: '16px', position: 'relative', marginBottom: '24px' }}>
+      {/* Circle Icon and connector line */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background: dotBg,
+          border: `2px solid ${strokeColor}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: titleColor,
+          zIndex: 2
+        }}>
+          {icon}
+        </div>
+        <div style={{
+          width: '2px',
+          flexGrow: 1,
+          background: strokeColor,
+          opacity: 0.3,
+          minHeight: '24px',
+          zIndex: 1
+        }} />
+      </div>
+
+      {/* Card Content */}
+      <div style={{
+        flex: 1,
+        background: bgClass,
+        border: `1px solid ${borderColor}`,
+        borderRadius: '12px',
+        padding: '12px 16px',
+        textAlign: 'left'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: titleColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Step {number}
+          </span>
+          <span style={{
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            padding: '2px 8px',
+            borderRadius: '9999px',
+            background: dotBg,
+            color: titleColor,
+            textTransform: 'uppercase'
+          }}>
+            {status}
+          </span>
+        </div>
+        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: titleColor }}>{title}</h4>
+        <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: textColor, lineHeight: 1.4 }}>{desc}</p>
+        {extra && <div style={{ marginTop: '8px' }}>{extra}</div>}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   // Theme state
   const [darkMode, setDarkMode] = useState(() => {
@@ -202,6 +303,7 @@ export default function App() {
   const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [isBlacklisted, setIsBlacklisted] = useState(false);
   const [successData, setSuccessData] = useState<{
+    visitId?: string;
     visitorName: string;
     checkInCode: string;
     qrToken: string;
@@ -209,6 +311,8 @@ export default function App() {
     branchName: string;
     scheduledAt: string;
   } | null>(null);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [visitDetails, setVisitDetails] = useState<any>(null);
 
   // Camera states
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -470,6 +574,81 @@ export default function App() {
     }
   };
 
+  // Auto-dismiss registration success popup in under 30 seconds (25 seconds)
+  useEffect(() => {
+    if (showSuccessPopup) {
+      const timer = setTimeout(() => {
+        setShowSuccessPopup(false);
+      }, 25000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessPopup]);
+
+  // Real-time listener for the registered visit and its badge
+  useEffect(() => {
+    if (!successData?.visitId) {
+      setVisitDetails(null);
+      return;
+    }
+
+    const fetchVisitDetails = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('Visit')
+          .select(`
+            id,
+            status,
+            remarks,
+            deniedReason,
+            checkInCode,
+            scheduledAt,
+            Visitor (
+              fullName,
+              visitorType,
+              photoUrl
+            ),
+            Badge (
+              badgeNumber
+            )
+          `)
+          .eq('id', successData.visitId)
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setVisitDetails(data);
+        }
+      } catch (err) {
+        console.error('Error fetching visit details:', err);
+      }
+    };
+
+    fetchVisitDetails();
+
+    // Subscribe to updates for this specific visit
+    const visitChannel = supabase
+      .channel(`live_visit_${successData.visitId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'Visit', filter: `id=eq.${successData.visitId}` },
+        () => {
+          fetchVisitDetails();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'Badge' },
+        () => {
+          fetchVisitDetails();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(visitChannel);
+    };
+  }, [successData?.visitId]);
+
   // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -673,7 +852,7 @@ export default function App() {
       if (inviteErr) throw inviteErr;
 
       // 5. Create Visit Shell (Expected walk-in)
-      const { error: visitErr } = await supabase
+      const { data: visitData, error: visitErr } = await supabase
         .from('Visit')
         .insert({
           visitorId,
@@ -686,7 +865,9 @@ export default function App() {
           checkInCode,
           additionalGuests: additionalGuests,
           createdByUserId: null // Self registered
-        });
+        })
+        .select('id')
+        .single();
 
       if (visitErr) throw visitErr;
 
@@ -711,9 +892,10 @@ export default function App() {
         console.warn('Realtime broadcast failed:', broadcastErr);
       }
 
-      // Show success screen
+      // Show success screen and popup
       const selectedHost = employees.find(e => e.id === hostEmployeeId);
       setSuccessData({
+        visitId: visitData?.id,
         visitorName: fullName,
         checkInCode,
         qrToken,
@@ -721,6 +903,7 @@ export default function App() {
         branchName: selectedBranchName,
         scheduledAt: new Date(scheduledAt).toLocaleString()
       });
+      setShowSuccessPopup(true);
 
     } catch (err: any) {
       console.error('Error during self-registration:', err);
@@ -768,6 +951,9 @@ export default function App() {
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', lineHeight: '1.6', maxWidth: '480px', margin: '0 auto 32px' }}>
           Your details are currently flagged in our security blacklist for this branch location. For your security and ours, online self-registration cannot be completed. 
           <br /><br />
+          <strong style={{ display: 'block', fontSize: '1.1rem', color: '#fca5a5', margin: '16px 0', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '12px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)' }}>
+            ⚠️ You are blacklisted, contact your host for further assistance.
+          </strong>
           Please approach the security gate or reception desk directly with a valid photo ID to request manual entry validation.
         </p>
         <button className="btn btn-secondary" onClick={handleResetForm} style={{ padding: '12px 28px' }}>
@@ -777,22 +963,181 @@ export default function App() {
     );
   }
 
-  // Success view (Simple success message, no pass card or QR)
+  // Success view (Progress timeline of the visitor's visit)
   if (successData) {
+    const visitStatus = visitDetails?.status || 'Expected';
+    const visitRemarks = visitDetails?.remarks || '';
+    const isDenied = visitStatus === 'Denied' || visitRemarks === 'Host Denied';
+    const badgeNo = visitDetails?.Badge?.badgeNumber || (Array.isArray(visitDetails?.Badge) ? visitDetails?.Badge[0]?.badgeNumber : '') || 'N/A';
+
     return (
-      <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-        <div style={{ display: 'inline-flex', padding: '16px', background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', borderRadius: '50%', marginBottom: '24px' }}>
-          <CheckCircle size={48} />
+      <div style={{ position: 'relative', width: '100%' }}>
+        {/* Success Popup Modal */}
+        {showSuccessPopup && (
+          <div 
+            onClick={() => setShowSuccessPopup(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 99999,
+              background: 'rgba(0, 0, 0, 0.65)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              animation: 'fadeIn 0.3s ease-out'
+            }}
+          >
+            <div 
+              style={{
+                background: 'var(--card-bg-solid)',
+                border: '1.5px solid var(--color-success)',
+                borderRadius: '16px',
+                padding: '24px',
+                maxWidth: '440px',
+                width: '100%',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.4)',
+                position: 'relative',
+                textAlign: 'center'
+              }}
+            >
+              <button
+                onClick={() => setShowSuccessPopup(false)}
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--color-text-secondary)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={20} />
+              </button>
+              <div style={{
+                display: 'inline-flex',
+                padding: '12px',
+                background: 'rgba(52, 211, 153, 0.1)',
+                color: '#34d399',
+                borderRadius: '50%',
+                marginBottom: '16px'
+              }}>
+                <CheckCircle size={36} />
+              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '8px' }}>
+                Registration Successful!
+              </h3>
+              <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                Your details have been submitted. You can now monitor the progress of your visit in real time below.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="card" style={{ textAlign: 'center', padding: '32px 24px' }}>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '8px', color: 'var(--color-text-primary)' }}>
+            Visit Progress Tracker
+          </h2>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.88rem', marginBottom: '24px' }}>
+            Real-time updates for your visit at <strong>{successData.branchName}</strong>
+          </p>
+
+          {/* Visit Details Summary Card */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid var(--card-border)',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '24px',
+            textAlign: 'left',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '12px'
+          }}>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Visitor</div>
+              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{successData.visitorName}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Host Employee</div>
+              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{successData.hostName}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Check-in Code</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--indigo-primary)', fontFamily: 'monospace' }}>{successData.checkInCode}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Scheduled Time</div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>{successData.scheduledAt}</div>
+            </div>
+            {badgeNo && badgeNo !== 'N/A' && (
+              <div style={{ gridColumn: 'span 2', marginTop: '4px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', color: '#34d399', background: 'rgba(52, 211, 153, 0.1)', padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(52, 211, 153, 0.2)', fontWeight: 700 }}>
+                  🏷️ Active Badge Number: {badgeNo}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Live Progress Flow */}
+          <div style={{ marginBottom: '32px' }}>
+            <TimelineStep 
+              number="1"
+              title="Registration Submitted"
+              desc="Visitor registration has been recorded successfully."
+              status="completed"
+              icon={<User size={16} />}
+            />
+            <TimelineStep 
+              number="2"
+              title="Host Review"
+              desc={isDenied ? "Visit request has been declined by the host." : visitRemarks === 'Host Approved' || ['Waiting', 'CheckedIn', 'CheckedOut'].includes(visitStatus) ? "Host employee has approved your visit request." : "Awaiting host approval."}
+              status={isDenied ? 'denied' : (visitRemarks === 'Host Approved' || ['Waiting', 'CheckedIn', 'CheckedOut'].includes(visitStatus)) ? 'completed' : 'active'}
+              icon={<Users size={16} />}
+              extra={isDenied ? (
+                <div style={{ fontSize: '0.8rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', marginTop: '8px', textAlign: 'left' }}>
+                  🚫 <strong>Reason for Denial:</strong> {visitDetails?.deniedReason || 'Denied by Host'}
+                </div>
+              ) : null}
+            />
+            <TimelineStep 
+              number="3"
+              title="Arrival Verified"
+              desc={isDenied ? "Arrival check skipped due to host denial." : ['Waiting', 'CheckedIn', 'CheckedOut'].includes(visitStatus) ? "Lobby security has verified your arrival." : visitRemarks === 'Host Approved' ? "Please present your Check-in Code to lobby security." : "Awaiting host approval first."}
+              status={isDenied ? 'pending' : ['Waiting', 'CheckedIn', 'CheckedOut'].includes(visitStatus) ? 'completed' : visitRemarks === 'Host Approved' ? 'active' : 'pending'}
+              icon={<MapPin size={16} />}
+            />
+            <TimelineStep 
+              number="4"
+              title="Checked In"
+              desc={isDenied ? "Check-in locked." : ['CheckedIn', 'CheckedOut'].includes(visitStatus) ? "Welcome to the building! Access badge issued." : visitStatus === 'Waiting' ? "Issuing your access badge now." : "Awaiting arrival verification."}
+              status={isDenied ? 'pending' : ['CheckedIn', 'CheckedOut'].includes(visitStatus) ? 'completed' : visitStatus === 'Waiting' ? 'active' : 'pending'}
+              icon={<CheckCircle size={16} />}
+              extra={!isDenied && badgeNo && badgeNo !== 'N/A' ? (
+                <div style={{ fontSize: '0.8rem', color: '#34d399', background: 'rgba(52, 211, 153, 0.1)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(52, 211, 153, 0.2)', marginTop: '8px', textAlign: 'left' }}>
+                  🏷️ <strong>Assigned Badge:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{badgeNo}</span>
+                </div>
+              ) : null}
+            />
+            <TimelineStep 
+              number="5"
+              title="Checked Out"
+              desc={isDenied ? "Visit complete." : visitStatus === 'CheckedOut' ? "Visit complete. Badge has been returned." : visitStatus === 'CheckedIn' ? "Please return your physical badge to lobby security upon exit." : "Awaiting check-in."}
+              status={isDenied ? 'pending' : visitStatus === 'CheckedOut' ? 'completed' : visitStatus === 'CheckedIn' ? 'active' : 'pending'}
+              icon={<Briefcase size={16} />}
+            />
+          </div>
+
+          <button className="btn btn-secondary" onClick={handleResetForm} style={{ padding: '12px 32px', width: '100%', maxWidth: '280px' }}>
+            Register Another Visitor
+          </button>
         </div>
-        <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '12px' }}>
-          Successfully Registered!
-        </h2>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', lineHeight: '1.6', maxWidth: '440px', margin: '0 auto 32px' }}>
-          Your self-registration details have been recorded. You may now proceed to check in.
-        </p>
-        <button className="btn btn-primary" onClick={handleResetForm} style={{ padding: '12px 32px', width: '100%', maxWidth: '280px' }}>
-          Register Another Visitor
-        </button>
       </div>
     );
   }
