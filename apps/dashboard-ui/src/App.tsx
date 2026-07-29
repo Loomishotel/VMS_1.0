@@ -23,7 +23,9 @@ import {
   Edit2,
   Camera,
   RefreshCw,
-  QrCode
+  QrCode,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import {
   AreaChart,
@@ -504,6 +506,9 @@ export default function App() {
     deniedReason?: string;
   } | null>(null);
 
+  const [scheduledNotifsQueue, setScheduledNotifsQueue] = useState<any[]>([]);
+  const [dismissedScheduledVisitIds, setDismissedScheduledVisitIds] = useState<Set<string>>(new Set());
+
   const queueRef = useRef<any[]>([]);
   const employeeVisitsRef = useRef<any[]>([]);
   const [darkMode, setDarkMode] = useState(() => {
@@ -541,6 +546,7 @@ export default function App() {
   // Authentication Fields
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [captchaRequired, setCaptchaRequired] = useState<boolean>(false);
   const [captchaInput, setCaptchaInput] = useState<string>('');
@@ -1210,7 +1216,7 @@ export default function App() {
     }
   }, [currentView, token, user]);
 
-  // Subscribe to real-time database changes on the Visit table
+  // Subscribe to real-time database changes on the Visit and Visitor tables
   useEffect(() => {
     if (!token || !user) return;
 
@@ -1234,11 +1240,54 @@ export default function App() {
           }
 
           // Real-time Notification logic
-          if (payload.eventType === 'UPDATE') {
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             const newRecord = payload.new;
 
+            // --- Host Scheduled Notification Queue logic ---
+            if (user.role === 'Employee' && employeeId && newRecord.hostEmployeeId === employeeId) {
+              const isToday = newRecord.scheduledAt && new Date(newRecord.scheduledAt).toDateString() === new Date().toDateString();
+              const isExpected = newRecord.status === 'Expected';
+              const notApprovedOrDenied = newRecord.remarks !== 'Host Approved' && newRecord.remarks !== 'Host Denied';
+
+              if (isToday && isExpected && notApprovedOrDenied) {
+                try {
+                  const { data: visData } = await supabase
+                    .from('Visitor')
+                    .select('fullName, photoUrl, company, visitorType, email, phone')
+                    .eq('id', newRecord.visitorId)
+                    .single();
+                  if (visData) {
+                    const visitObj = {
+                      id: newRecord.id,
+                      visitorId: newRecord.visitorId,
+                      visitorName: visData.fullName || 'Visitor',
+                      photoUrl: visData.photoUrl || '',
+                      visitorCompany: visData.company || '',
+                      visitorType: visData.visitorType || 'Guest',
+                      visitorEmail: visData.email || '',
+                      visitorPhone: visData.phone || '',
+                      purpose: newRecord.purpose || '',
+                      status: newRecord.status,
+                      scheduledAt: newRecord.scheduledAt,
+                      remarks: newRecord.remarks || ''
+                    };
+                    setScheduledNotifsQueue(prev => {
+                      if (prev.some(p => p.id === visitObj.id)) {
+                        return prev.map(p => p.id === visitObj.id ? visitObj : p);
+                      }
+                      return [...prev, visitObj];
+                    });
+                  }
+                } catch (err) {
+                  console.error('Error fetching visitor details for scheduled realtime notif:', err);
+                }
+              } else {
+                setScheduledNotifsQueue(prev => prev.filter(p => p.id !== newRecord.id));
+              }
+            }
+
             // --- CONDITION 1: Visitor Arrived Notification for Employee ---
-            if (user.role === 'Employee' && employeeId) {
+            if (payload.eventType === 'UPDATE' && user.role === 'Employee' && employeeId) {
               const existing = employeeVisitsRef.current.find(v => v.id === newRecord.id);
               const oldStatus = existing ? existing.status : null;
 
@@ -1279,7 +1328,7 @@ export default function App() {
             }
 
             // --- CONDITION 2: Visit Delay Notification for Security/Admin ---
-            if (['Security', 'Admin'].includes(user.role)) {
+            if (payload.eventType === 'UPDATE' && ['Security', 'Admin'].includes(user.role)) {
               const existing = queueRef.current.find(v => v.id === newRecord.id);
               const oldSched = existing ? existing.scheduledAt : null;
               const newSched = newRecord.scheduledAt;
@@ -1325,6 +1374,15 @@ export default function App() {
               }
             }
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'Visitor' },
+        async (payload: any) => {
+          console.log('Realtime update detected on Visitor table:', payload);
+          fetchQueue(true);
+          fetchEmployeeVisits();
         }
       )
       .subscribe();
@@ -1431,6 +1489,25 @@ export default function App() {
             sendMobileDeviceNotification(
               '✅ Visit Entry Approved',
               `Host ${p.hostName} approved entry for visitor ${p.visitorName}. Security may check them in.`,
+              '/123.png'
+            );
+          }
+          fetchQueue(true);
+        }
+      })
+      .on('broadcast', { event: 'host_denied_scheduled' }, (payload: any) => {
+        const p = payload.payload;
+        if (['Security', 'Admin'].includes(user.role)) {
+          setRealtimeNotification({
+            type: 'blacklisted_host_rejected' as any,
+            visitorName: p.visitorName,
+            hostName: p.hostName,
+            deniedReason: 'Denied by Host'
+          });
+          if (isMobile) {
+            sendMobileDeviceNotification(
+              '🚫 Scheduled Visit Denied',
+              `Host ${p.hostName} denied todays scheduled visit for ${p.visitorName}.`,
               '/123.png'
             );
           }
@@ -1729,7 +1806,8 @@ export default function App() {
             phone,
             company,
             visitorType,
-            location
+            location,
+            photoUrl
           ),
           Employee (
             id,
@@ -1762,7 +1840,8 @@ export default function App() {
               phone,
               company,
               visitorType,
-              location
+              location,
+              photoUrl
             ),
             Employee (
               id,
@@ -1789,6 +1868,7 @@ export default function App() {
           visitorCompany: v.Visitor?.company || '',
           visitorType: v.Visitor?.visitorType || 'Guest',
           visitorLocation: v.Visitor?.location || '',
+          photoUrl: v.Visitor?.photoUrl || '',
           hostId: v.Employee?.id || '',
           hostName: v.Employee?.fullName || 'Host',
           hostEmail: v.Employee?.email || '',
@@ -1803,6 +1883,24 @@ export default function App() {
           remarks: v.remarks || ''
         }));
         setEmployeeVisits(mapped);
+
+        // Populate the scheduled notifications queue
+        const todayStr = new Date().toDateString();
+        const qualifying = mapped.filter((v: any) => 
+          v.status === 'Expected' &&
+          v.remarks !== 'Host Approved' &&
+          v.remarks !== 'Host Denied' &&
+          v.scheduledAt &&
+          new Date(v.scheduledAt).toDateString() === todayStr &&
+          !dismissedScheduledVisitIds.has(v.id)
+        );
+        if (qualifying.length > 0) {
+          qualifying.sort((a: any, b: any) => new Date(a.scheduledAt || 0).getTime() - new Date(b.scheduledAt || 0).getTime());
+          setScheduledNotifsQueue(prev => {
+            const filteredQualifying = qualifying.filter((q: any) => !prev.some(p => p.id === q.id));
+            return [...prev, ...filteredQualifying];
+          });
+        }
       }
     } catch (err: any) {
       console.error('Error fetching employee visits:', err.message);
@@ -2082,6 +2180,96 @@ export default function App() {
     } catch (err: any) {
       setAlertMessage({ type: 'error', text: err.message || 'Failed to delay visit' });
     }
+  };
+
+  const handleApproveScheduledVisit = async (visitId: string) => {
+    return executeWithNetworkWatchdog(`approve_sched_${visitId}`, async () => {
+      const { error: updateErr } = await supabase
+        .from('Visit')
+        .update({ remarks: 'Host Approved' })
+        .eq('id', visitId);
+
+      if (updateErr) throw updateErr;
+
+      await supabase.from('AuditLog').insert({
+        actorUserId: user.id,
+        action: 'VISIT_HOST_APPROVED',
+        entityType: 'Visit',
+        entityId: visitId
+      });
+
+      // Find the visitor name from the queue
+      const visitItem = scheduledNotifsQueue.find(q => q.id === visitId) || employeeVisits.find(v => v.id === visitId);
+      const visitorName = visitItem?.visitorName || 'Visitor';
+
+      // Broadcast to security
+      const channel = supabase.channel('vms_global_broadcast');
+      await channel.send({
+        type: 'broadcast',
+        event: 'host_approved_arrival',
+        payload: {
+          visitId,
+          visitorName,
+          hostName: user?.fullName || 'Host'
+        }
+      });
+
+      // Remove from queue
+      setScheduledNotifsQueue(prev => prev.filter(item => item.id !== visitId));
+      setDismissedScheduledVisitIds(prev => {
+        const next = new Set(prev);
+        next.add(visitId);
+        return next;
+      });
+
+      setAlertMessage({ type: 'success', text: 'Scheduled visit approved.' });
+      fetchEmployeeVisits();
+    });
+  };
+
+  const handleDenyScheduledVisit = async (visitId: string) => {
+    return executeWithNetworkWatchdog(`deny_sched_${visitId}`, async () => {
+      const { error: updateErr } = await supabase
+        .from('Visit')
+        .update({ status: 'Denied', remarks: 'Host Denied', deniedReason: 'Denied by Host' })
+        .eq('id', visitId);
+
+      if (updateErr) throw updateErr;
+
+      await supabase.from('AuditLog').insert({
+        actorUserId: user.id,
+        action: 'VISIT_STATUS_DENIED',
+        entityType: 'Visit',
+        entityId: visitId
+      });
+
+      // Find the visitor name from the queue
+      const visitItem = scheduledNotifsQueue.find(q => q.id === visitId) || employeeVisits.find(v => v.id === visitId);
+      const visitorName = visitItem?.visitorName || 'Visitor';
+
+      // Broadcast to security
+      const channel = supabase.channel('vms_global_broadcast');
+      await channel.send({
+        type: 'broadcast',
+        event: 'host_denied_scheduled',
+        payload: {
+          visitId,
+          visitorName,
+          hostName: user?.fullName || 'Host'
+        }
+      });
+
+      // Remove from queue
+      setScheduledNotifsQueue(prev => prev.filter(item => item.id !== visitId));
+      setDismissedScheduledVisitIds(prev => {
+        const next = new Set(prev);
+        next.add(visitId);
+        return next;
+      });
+
+      setAlertMessage({ type: 'warning', text: 'Scheduled visit denied.' });
+      fetchEmployeeVisits();
+    });
   };
 
   const handleSecurityMarkArrived = async (visitId: string) => {
@@ -3549,7 +3737,7 @@ export default function App() {
   });
 
   const activeArrivalsToday = todaysQueue.filter(item =>
-    ['Expected', 'Waiting', 'CheckedIn'].includes(item.status)
+    ['Expected', 'Waiting', 'CheckedIn', 'Denied'].includes(item.status)
   );
 
   const filteredArrivals = activeArrivalsToday.filter(item =>
@@ -3641,14 +3829,37 @@ export default function App() {
             </div>
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Password</label>
-              <input
-                type="password"
-                className="form-input"
-                placeholder="••••••••"
-                value={loginPassword}
-                onChange={e => setLoginPassword(e.target.value)}
-                disabled={lockoutUntil > Date.now()}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  className="form-input"
+                  placeholder="••••••••"
+                  value={loginPassword}
+                  onChange={e => setLoginPassword(e.target.value)}
+                  disabled={lockoutUntil > Date.now()}
+                  style={{ width: '100%', paddingRight: '40px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             {captchaRequired && (
@@ -4052,7 +4263,7 @@ export default function App() {
                             className="btn btn-primary"
                             disabled={!!pendingActionId}
                             style={{ padding: '8px 10px', fontSize: '0.8rem', justifyContent: 'center' }}
-                            onClick={() => handleSecurityMarkArrived(item.id)}
+                            onClick={() => setShowArrivalPhotoModal(item.id)}
                           >
                             {pendingActionId === `arrive_${item.id}` ? <Loader2 size={14} className="animate-spin" /> : 'Arrived'}
                           </button>
@@ -4222,7 +4433,7 @@ export default function App() {
 
                     <div style={{ display: 'flex', gap: '6px' }}>
                       {!isBl && ['Expected', 'Waiting'].includes(item.status) && isToday && (
-                        <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem' }} onClick={() => handleSecurityMarkArrived(item.id)}>
+                        <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem' }} onClick={() => setShowArrivalPhotoModal(item.id)}>
                           Mark Arrived
                         </button>
                       )}
@@ -5794,7 +6005,7 @@ export default function App() {
                                       <>
                                         {item.status === 'Expected' && (
                                           <>
-                                            <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleSecurityMarkArrived(item.id)}>
+                                            <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowArrivalPhotoModal(item.id)}>
                                               Mark Arrived
                                             </Button>
                                             <Button variant="danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowDenyModal(item.id)}>
@@ -5962,7 +6173,7 @@ export default function App() {
                                             const isToday = new Date(item.scheduledAt).toDateString() === new Date().toDateString();
                                             if (isToday) {
                                               return (
-                                                <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleSecurityMarkArrived(item.id)}>
+                                                <Button variant="primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setShowArrivalPhotoModal(item.id)}>
                                                   Mark Arrived
                                                 </Button>
                                               );
@@ -9027,6 +9238,99 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Scheduled Visitor Arrivals Queue Notification (Employee Only) */}
+      {!realtimeNotification && scheduledNotifsQueue.length > 0 && user?.role === 'Employee' && (() => {
+        const currentSched = scheduledNotifsQueue[0];
+        return (
+          <div style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            zIndex: 99999,
+            maxWidth: '420px',
+            width: '90%',
+            animation: 'slideIn 0.3s ease-out forwards',
+            background: 'var(--card-bg)',
+            borderRadius: '16px',
+            border: '1.5px solid var(--color-indigo-accent)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
+            backdropFilter: 'var(--backdrop-blur)',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  background: 'rgba(99, 102, 241, 0.15)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  color: 'var(--color-indigo-accent)',
+                  borderRadius: '50%',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Clock size={20} className="pulse-slow" />
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>Scheduled Visit Today</h4>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-indigo-accent)', fontWeight: 600 }}>Action Required</span>
+                </div>
+              </div>
+              <button
+                style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer', padding: '2px' }}
+                onClick={() => {
+                  setDismissedScheduledVisitIds(prev => {
+                    const next = new Set(prev);
+                    next.add(currentSched.id);
+                    return next;
+                  });
+                  setScheduledNotifsQueue(prev => prev.filter(p => p.id !== currentSched.id));
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '10px', border: '1px solid var(--card-border)' }}>
+              <Avatar name={currentSched.visitorName} visitorType={currentSched.visitorType} size="md" src={currentSched.photoUrl || undefined} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {currentSched.visitorName}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                  🏢 {currentSched.visitorCompany || 'Independent'} · <span style={{ color: `var(--visitor-${currentSched.visitorType?.toLowerCase()}-text)` }}>{currentSched.visitorType}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div>💬 <strong>Purpose:</strong> {currentSched.purpose}</div>
+              <div>⏰ <strong>Scheduled:</strong> {new Date(currentSched.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => handleApproveScheduledVisit(currentSched.id)}
+                style={{ padding: '10px', fontSize: '0.8rem', justifyContent: 'center', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', color: '#fff' }}
+              >
+                Approve
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => handleDenyScheduledVisit(currentSched.id)}
+                style={{ padding: '10px', fontSize: '0.8rem', justifyContent: 'center', background: 'linear-gradient(135deg, #ef4444, #dc2626)', border: 'none', color: '#fff' }}
+              >
+                Deny
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Real-time Popup Notifications */}
       {realtimeNotification && (
