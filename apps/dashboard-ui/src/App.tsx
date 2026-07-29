@@ -1378,11 +1378,18 @@ export default function App() {
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'Visitor' },
+        { event: '*', schema: 'public', table: 'Visitor' },
         async (payload: any) => {
-          console.log('Realtime update detected on Visitor table:', payload);
-          fetchQueue(true);
-          fetchEmployeeVisits();
+          console.log('Realtime change detected on Visitor table:', payload);
+          if (currentView === 'queue' || currentView === 'security_arrivals') {
+            fetchQueue(true);
+          } else if (currentView === 'employee_scheduled' || currentView === 'employee_past' || currentView === 'employee_future') {
+            fetchEmployeeVisits();
+          } else if (currentView === 'check_invite') {
+            fetchFutureInvitations();
+          } else if (currentView === 'security_history') {
+            fetchPastRecords();
+          }
         }
       )
       .subscribe();

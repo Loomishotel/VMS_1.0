@@ -584,6 +584,39 @@ export default function App() {
     }
   }, [showSuccessPopup]);
 
+  // Helper to fetch live visit details
+  const fetchVisitDetails = async (visitId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('Visit')
+        .select(`
+          id,
+          status,
+          remarks,
+          deniedReason,
+          checkInCode,
+          scheduledAt,
+          Visitor (
+            fullName,
+            visitorType,
+            photoUrl
+          ),
+          Badge (
+            badgeNumber
+          )
+        `)
+        .eq('id', visitId)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setVisitDetails(data);
+      }
+    } catch (err) {
+      console.error('Error fetching visit details:', err);
+    }
+  };
+
   // Real-time listener for the registered visit and its badge
   useEffect(() => {
     if (!successData?.visitId) {
@@ -591,39 +624,7 @@ export default function App() {
       return;
     }
 
-    const fetchVisitDetails = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('Visit')
-          .select(`
-            id,
-            status,
-            remarks,
-            deniedReason,
-            checkInCode,
-            scheduledAt,
-            Visitor (
-              fullName,
-              visitorType,
-              photoUrl
-            ),
-            Badge (
-              badgeNumber
-            )
-          `)
-          .eq('id', successData.visitId)
-          .single();
-
-        if (error) throw error;
-        if (data) {
-          setVisitDetails(data);
-        }
-      } catch (err) {
-        console.error('Error fetching visit details:', err);
-      }
-    };
-
-    fetchVisitDetails();
+    fetchVisitDetails(successData.visitId);
 
     // Subscribe to updates for this specific visit
     const visitChannel = supabase
@@ -632,14 +633,14 @@ export default function App() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'Visit', filter: `id=eq.${successData.visitId}` },
         () => {
-          fetchVisitDetails();
+          if (successData?.visitId) fetchVisitDetails(successData.visitId);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'Badge' },
         () => {
-          fetchVisitDetails();
+          if (successData?.visitId) fetchVisitDetails(successData.visitId);
         }
       )
       .subscribe();
@@ -1132,6 +1133,45 @@ export default function App() {
               status={isDenied ? 'pending' : visitStatus === 'CheckedOut' ? 'completed' : visitStatus === 'CheckedIn' ? 'active' : 'pending'}
               icon={<Briefcase size={16} />}
             />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', margin: '24px 0', width: '100%' }}>
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => successData?.visitId && fetchVisitDetails(successData.visitId)}
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '12px 24px', 
+                background: 'var(--btn-secondary-bg)',
+                color: 'var(--color-text-primary)',
+                border: '1.5px solid var(--btn-secondary-border)',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                width: '100%',
+                maxWidth: '280px',
+                justifyContent: 'center',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+            >
+              <RefreshCw size={16} /> Sync Status
+            </button>
+            <div style={{
+              fontSize: '0.82rem',
+              color: '#fbbf24',
+              background: 'rgba(245, 158, 11, 0.08)',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              border: '1px solid rgba(245, 158, 11, 0.2)',
+              lineHeight: 1.4,
+              textAlign: 'center',
+              width: '100%',
+              maxWidth: '380px'
+            }}>
+              <strong>⚠️ Warning:</strong> Do not refresh or reload this webpage. Refreshing will reload the registration form, and this live visit tracking progress page will be gone.
+            </div>
           </div>
 
           <button className="btn btn-secondary" onClick={handleResetForm} style={{ padding: '12px 32px', width: '100%', maxWidth: '280px' }}>

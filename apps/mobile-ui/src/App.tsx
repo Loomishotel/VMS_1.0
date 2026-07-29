@@ -654,7 +654,8 @@ export default function App() {
 
   // Pull-to-refresh Gesture Handlers for Mobile
   const handleTouchStartPull = (e: React.TouchEvent) => {
-    if (window.scrollY === 0) {
+    const scrollTop = e.currentTarget ? e.currentTarget.scrollTop : window.scrollY;
+    if (scrollTop === 0) {
       touchStartYRef.current = e.touches[0].clientY;
     } else {
       touchStartYRef.current = 0;
@@ -1357,11 +1358,18 @@ export default function App() {
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'Visitor' },
+        { event: '*', schema: 'public', table: 'Visitor' },
         async (payload: any) => {
-          console.log('Realtime update detected on Visitor table:', payload);
-          fetchQueue(true);
-          fetchEmployeeVisits();
+          console.log('Realtime change detected on Visitor table:', payload);
+          if (currentView === 'queue' || currentView === 'security_arrivals') {
+            fetchQueue(true);
+          } else if (currentView === 'employee_scheduled' || currentView === 'employee_past' || currentView === 'employee_future') {
+            fetchEmployeeVisits();
+          } else if (currentView === 'check_invite') {
+            fetchFutureInvitations();
+          } else if (currentView === 'security_history') {
+            fetchPastRecords();
+          }
         }
       )
       .subscribe();
@@ -4072,29 +4080,8 @@ export default function App() {
   const renderMobileSecurityArrivalsView = () => {
     return (
       <div 
-        onTouchStart={handleTouchStartPull}
-        onTouchMove={handleTouchMovePull}
-        onTouchEnd={handleTouchEndPull}
-        style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '100vh' }}
+        style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
       >
-        {(pullY > 0 || isRefreshing) && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            padding: '10px',
-            background: 'var(--card-bg-subtle)',
-            borderRadius: '10px',
-            fontSize: '0.82rem',
-            fontWeight: 600,
-            color: 'var(--color-indigo-accent)',
-            transition: 'all 0.2s ease-out'
-          }}>
-            <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-            <span>{isRefreshing ? 'Refreshing data...' : pullY > 60 ? 'Release to refresh' : 'Pull down to refresh ⬇️'}</span>
-          </div>
-        )}
 
         {isNetworkSlow && (
           <div style={{
@@ -5446,15 +5433,39 @@ export default function App() {
         </header>
 
         {/* Main View Area */}
-        <main style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '16px',
-          paddingBottom: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px'
-        }}>
+        <main 
+          onTouchStart={handleTouchStartPull}
+          onTouchMove={handleTouchMovePull}
+          onTouchEnd={handleTouchEndPull}
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '16px',
+            paddingBottom: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}
+        >
+          {(pullY > 0 || isRefreshing) && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '10px',
+              background: 'var(--card-bg-subtle)',
+              borderRadius: '10px',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              color: 'var(--color-indigo-accent)',
+              transition: 'all 0.2s ease-out',
+              flexShrink: 0
+            }}>
+              <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+              <span>{isRefreshing ? 'Refreshing data...' : pullY > 60 ? 'Release to refresh' : 'Pull down to refresh ⬇️'}</span>
+            </div>
+          )}
           
           <div style={{ position: 'relative' }}>
             <button 
